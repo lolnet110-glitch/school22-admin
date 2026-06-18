@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Админка рейтинга — Школа №22</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div>
+        <p>Админ-панель</p>
+        <h1>Школа №22</h1>
+      </div>
+      <button id="refreshBtn">↻</button>
+    </header>
+
+    <main>
+      <section class="screen active" id="screenHome">
+        <div class="hero">
+          <span>Управление рейтингом</span>
+          <h2>Что нужно сделать?</h2>
+        </div>
+
+        <div class="quick-grid">
+          <button class="quick-card primary-card" id="quickAddStudent">
+            <b>+</b>
+            <span>Добавить ученика</span>
+          </button>
+
+          <button class="quick-card" id="quickClasses">
+            <b>🏫</b>
+            <span>Классы и ученики</span>
+          </button>
+
+          <button class="quick-card" id="quickCategories">
+            <b>▦</b>
+            <span>Категории</span>
+          </button>
+
+          <button class="quick-card" id="quickAddCategory">
+            <b>+</b>
+            <span>Добавить категорию</span>
+          </button>
+
+          <button class="quick-card" id="quickAddSubcategory">
+            <b>+</b>
+            <span>Добавить подкатегорию</span>
+          </button>
+
+          <button class="quick-card dark" id="quickAllStudents">
+            <b>👤</b>
+            <span>Все ученики</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="screen" id="screenGroups">
+        <div class="screen-head">
+          <button class="back" data-target="screenHome">←</button>
+          <div>
+            <p>Классы</p>
+            <h2>Выберите блок</h2>
+          </div>
+        </div>
+
+        <div class="group-grid">
+          <button class="group-card" data-group="1"><b>1–4</b><span>Начальная школа</span></button>
+          <button class="group-card" data-group="2"><b>5–8</b><span>Средняя школа</span></button>
+          <button class="group-card" data-group="3"><b>9–11</b><span>Старшая школа</span></button>
+          <button class="group-card dark" data-group="all"><b>1–11</b><span>Все классы</span></button>
+        </div>
+      </section>
+
+      <section class="screen" id="screenClasses">
+        <div class="screen-head">
+          <button class="back" data-target="screenGroups">←</button>
+          <div>
+            <p>Классы</p>
+            <h2 id="classesTitle">—</h2>
+          </div>
+        </div>
+        <div id="classesList" class="list"></div>
+      </section>
+
+      <section class="screen" id="screenStudents">
+        <div class="screen-head">
+          <button class="back" data-target="screenClasses">←</button>
+          <div>
+            <p>Ученики класса</p>
+            <h2 id="studentsTitle">—</h2>
+          </div>
+        </div>
+
+        <button class="primary full" id="addStudentBtn">+ Добавить ученика в этот класс</button>
+        <div id="studentsList" class="list"></div>
+      </section>
+
+      <section class="screen" id="screenAllStudents">
+        <div class="screen-head">
+          <button class="back" data-target="screenHome">←</button>
+          <div>
+            <p>Ученики</p>
+            <h2>Все ученики</h2>
+          </div>
+        </div>
+
+        <button class="primary full" id="allAddStudentBtn">+ Добавить ученика</button>
+        <div id="allStudentsList" class="list"></div>
+      </section>
+
+      <section class="screen" id="screenStudentForm">
+        <div class="screen-head">
+          <button class="back" id="studentFormBack">←</button>
+          <div>
+            <p>Ученик</p>
+            <h2 id="studentFormTitle">Добавить</h2>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <label>
+            ФИО ученика
+            <input id="studentNameInput" placeholder="Например: Иванов Иван" />
+          </label>
+
+          <label>
+            Класс
+            <select id="studentClassSelect"></select>
+          </label>
+
+          <button class="primary full" id="saveStudentBtn">Сохранить ученика</button>
+        </div>
+      </section>
+
+      <section class="screen" id="screenScores">
+        <div class="screen-head">
+          <button class="back" data-target="screenStudents">←</button>
+          <div>
+            <p>Баллы ученика</p>
+            <h2 id="scoresStudentName">—</h2>
+          </div>
+        </div>
+
+        <div id="scoresList" class="scores-list"></div>
+        <button class="primary full" id="saveScoresBtn">Сохранить баллы</button>
+      </section>
+
+      <section class="screen" id="screenCategories">
+        <div class="screen-head">
+          <button class="back" data-target="screenHome">←</button>
+          <div>
+            <p>Настройки</p>
+            <h2>Категории</h2>
+          </div>
+        </div>
+
+        <button class="primary full" id="addCategoryBtn">+ Добавить категорию</button>
+        <button class="secondary full" id="addSubcategoryBtn">+ Добавить подкатегорию</button>
+
+        <div id="categoriesList" class="category-list"></div>
+      </section>
+
+      <section class="screen" id="screenCategoryForm">
+        <div class="screen-head">
+          <button class="back" data-target="screenCategories">←</button>
+          <div>
+            <p>Категория</p>
+            <h2>Добавить</h2>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <label>
+            Название категории
+            <input id="categoryNameInput" placeholder="Например: Экология" />
+          </label>
+
+          <label>
+            Максимум баллов
+            <input id="categoryMaxInput" type="number" value="100" />
+          </label>
+
+          <button class="primary full" id="saveCategoryBtn">Сохранить категорию</button>
+        </div>
+      </section>
+
+      <section class="screen" id="screenSubcategoryForm">
+        <div class="screen-head">
+          <button class="back" data-target="screenCategories">←</button>
+          <div>
+            <p>Подкатегория</p>
+            <h2>Добавить</h2>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <label>
+            Категория
+            <select id="subcategoryCategorySelect"></select>
+          </label>
+
+          <label>
+            Название подкатегории
+            <input id="subcategoryNameInput" placeholder="Например: Акции" />
+          </label>
+
+          <label>
+            Максимум баллов
+            <input id="subcategoryMaxInput" type="number" value="10" />
+          </label>
+
+          <button class="primary full" id="saveSubcategoryBtn">Сохранить подкатегорию</button>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
