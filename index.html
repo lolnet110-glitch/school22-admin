@@ -11,20 +11,235 @@
 </head>
 <body>
   <div class="app" id="app">
-    <header class="top"><div><p>Админ-панель</p><h1>Школа №22</h1></div><button id="refreshBtn">↻</button></header>
+    <header class="top">
+      <div>
+        <p>Админ-панель</p>
+        <h1>Школа №22</h1>
+      </div>
+      <button id="refreshBtn">↻</button>
+    </header>
+
     <main>
-      <section class="screen active start-screen" id="screenStart"><button class="hero-button" id="openAdminBtn"><span>Управление рейтингом</span><h2>Что нужно сделать?</h2><p>Открыть панель управления</p><i></i></button></section>
-      <section class="screen" id="screenHome"><div class="screen-head"><button class="back" data-target="screenStart">←</button><div><p>Админка</p><h2>Управление</h2></div></div><div class="quick-grid animated-grid"><button class="quick-card primary-card" id="quickClasses"><b>🏫</b><span>Классы и рейтинг</span></button><button class="quick-card" id="quickUniform"><b>👕</b><span>Школьная форма</span></button><button class="quick-card" id="quickCategories"><b>▦</b><span>Категории</span></button><button class="quick-card" id="quickAddClass"><b>＋</b><span>Добавить класс</span></button><button class="quick-card dark" id="quickAllRating"><b>🏆</b><span>Общий рейтинг</span></button></div></section>
-      <section class="screen" id="screenGroups"><div class="screen-head"><button class="back" data-target="screenHome">←</button><div><p>Классы</p><h2>Выберите блок</h2></div></div><div class="group-grid"><button class="group-card" data-group="1"><b>1–4</b><span>Начальная школа</span></button><button class="group-card" data-group="2"><b>5–8</b><span>Средняя школа</span></button><button class="group-card" data-group="3"><b>9–11</b><span>Старшая школа</span></button><button class="group-card dark" data-group="all"><b>1–11</b><span>Все классы</span></button></div></section>
-      <section class="screen" id="screenClasses"><div class="screen-head"><button class="back" data-target="screenGroups">←</button><div><p>Классы</p><h2 id="classesTitle">—</h2></div></div><div id="classesList" class="list"></div></section>
-      <section class="screen" id="screenClassDetail"><div class="screen-head"><button class="back" data-target="screenClasses">←</button><div><p>Класс</p><h2 id="classDetailTitle">—</h2></div></div><div class="form-card"><label>Название класса<input id="classNameInput" placeholder="Например: 5А" /></label><label>Параллель<input id="classGradeInput" type="number" min="1" max="11" /></label><label>Группа<select id="classGroupInput"><option value="1">Начальная школа — 1–4</option><option value="2">Средняя школа — 5–8</option><option value="3">Старшая школа — 9–11</option></select></label><label>Количество учеников<input id="studentsCountInput" type="number" min="0" value="0" /></label><div class="button-row"><button class="primary" id="saveClassBtn">Сохранить класс</button><button class="danger" id="deleteClassBtn">Удалить</button></div></div><div class="section-title"><h3>Рейтинг класса</h3><p>Баллы вводятся по подкатегориям, категории считаются автоматически</p></div><div id="classScoresList" class="scores-list"></div><button class="primary full" id="saveClassScoresBtn">Сохранить рейтинг</button><button class="secondary full" id="openUniformFromClassBtn">Школьная форма</button></section>
-      <section class="screen" id="screenClassForm"><div class="screen-head"><button class="back" data-target="screenHome">←</button><div><p>Класс</p><h2>Добавить класс</h2></div></div><div class="form-card"><label>Название класса<input id="newClassName" placeholder="Например: 5В" /></label><label>Параллель<input id="newClassGrade" type="number" min="1" max="11" value="5" /></label><label>Группа<select id="newClassGroup"><option value="1">Начальная школа — 1–4</option><option value="2" selected>Средняя школа — 5–8</option><option value="3">Старшая школа — 9–11</option></select></label><label>Количество учеников<input id="newClassStudents" type="number" min="0" value="0" /></label><button class="primary full" id="createClassBtn">Добавить класс</button></div></section>
-      <section class="screen" id="screenUniformClassSelect"><div class="screen-head"><button class="back" data-target="screenHome">←</button><div><p>Школьная форма</p><h2>Выберите класс</h2></div></div><div id="uniformClassesList" class="list"></div></section>
-      <section class="screen" id="screenUniform"><div class="screen-head"><button class="back" data-target="screenUniformClassSelect">←</button><div><p>Школьная форма</p><h2 id="uniformTitle">—</h2></div></div><div class="stat-card"><span>Средний балл по всем проверкам</span><strong id="uniformAverage">0</strong><p><span id="uniformChecksCount">0</span> проверок</p></div><div class="form-card"><label>Дата проверки<input id="uniformDateInput" type="date" /></label><label>Сколько учеников без формы<input id="withoutUniformInput" type="number" min="0" value="0" /></label><label>Комментарий<input id="uniformCommentInput" placeholder="Необязательно" /></label><button class="primary full" id="saveUniformBtn">Добавить проверку</button></div><div class="section-title"><h3>История проверок</h3><p>Можно удалять ошибочные записи</p></div><div id="uniformHistory" class="list"></div></section>
-      <section class="screen" id="screenCategories"><div class="screen-head"><button class="back" data-target="screenHome">←</button><div><p>Настройки</p><h2>Категории</h2></div></div><button class="primary full" id="addCategoryBtn">+ Добавить категорию</button><div id="categoriesList" class="category-list"></div></section>
-      <section class="screen" id="screenCategoryForm"><div class="screen-head"><button class="back" data-target="screenCategories">←</button><div><p>Категория</p><h2 id="categoryFormTitle">Добавить</h2></div></div><div class="form-card"><label>Название категории<input id="categoryNameInput" /></label><label>Максимум баллов<input id="categoryMaxInput" type="number" value="100" /></label><label>Порядок<input id="categorySortInput" type="number" value="0" /></label><button class="primary full" id="saveCategoryBtn">Сохранить категорию</button><button class="danger full hidden" id="deleteCategoryBtn">Удалить категорию</button></div></section>
-      <section class="screen" id="screenSubcategoryForm"><div class="screen-head"><button class="back" data-target="screenCategories">←</button><div><p>Подкатегория</p><h2 id="subcategoryFormTitle">Добавить</h2></div></div><div class="form-card"><label>Категория<select id="subcategoryCategoryInput"></select></label><label>Название подкатегории<input id="subcategoryNameInput" /></label><label>Максимум баллов<input id="subcategoryMaxInput" type="number" value="10" /></label><label>Порядок<input id="subcategorySortInput" type="number" value="0" /></label><button class="primary full" id="saveSubcategoryBtn">Сохранить подкатегорию</button><button class="danger full hidden" id="deleteSubcategoryBtn">Удалить подкатегорию</button></div></section>
-      <section class="screen" id="screenAllRating"><div class="screen-head"><button class="back" data-target="screenHome">←</button><div><p>Рейтинг</p><h2>Все классы</h2></div></div><div id="allRatingList" class="list"></div></section>
-    </main><div class="toast" id="toast"></div>
-  </div><script src="script.js"></script>
-</body></html>
+      <section class="screen active start-screen" id="screenStart">
+        <button class="hero-button" id="openAdminBtn">
+          <span>Управление рейтингом</span>
+          <h2>Что нужно сделать?</h2>
+          <p>Открыть панель управления</p>
+          <i></i>
+        </button>
+      </section>
+
+      <section class="screen" id="screenHome">
+        <div class="screen-head">
+          <button class="back" data-target="screenStart">←</button>
+          <div><p>Админка</p><h2>Управление</h2></div>
+        </div>
+
+        <button class="alert-card hidden" id="uniformAlertBtn">
+          <b>!</b>
+          <div>
+            <h3 id="uniformAlertTitle">Не проверена школьная форма</h3>
+            <p id="uniformAlertText">Откройте раздел школьной формы</p>
+          </div>
+        </button>
+
+        <div class="quick-grid animated-grid">
+          <button class="quick-card primary-card" id="quickClasses"><b>🏫</b><span>Классы и рейтинг</span></button>
+          <button class="quick-card" id="quickUniform"><b>👕</b><span>Школьная форма</span></button>
+          <button class="quick-card" id="quickCategories"><b>▦</b><span>Категории</span></button>
+          <button class="quick-card" id="quickAddClass"><b>＋</b><span>Добавить класс</span></button>
+          <button class="quick-card dark" id="quickAllRating"><b>🏆</b><span>Общий рейтинг</span></button>
+        </div>
+      </section>
+
+      <section class="screen" id="screenGroups">
+        <div class="screen-head">
+          <button class="back" data-target="screenHome">←</button>
+          <div><p>Классы</p><h2>Выберите блок</h2></div>
+        </div>
+        <div class="group-grid">
+          <button class="group-card" data-group="1"><b>1–4</b><span>Начальная школа</span></button>
+          <button class="group-card" data-group="2"><b>5–8</b><span>Средняя школа</span></button>
+          <button class="group-card" data-group="3"><b>9–11</b><span>Старшая школа</span></button>
+          <button class="group-card dark" data-group="all"><b>1–11</b><span>Все классы</span></button>
+        </div>
+      </section>
+
+      <section class="screen" id="screenClasses">
+        <div class="screen-head">
+          <button class="back" data-target="screenGroups">←</button>
+          <div><p>Классы</p><h2 id="classesTitle">—</h2></div>
+        </div>
+        <div id="classesList" class="list"></div>
+      </section>
+
+      <section class="screen" id="screenClassDetail">
+        <div class="screen-head">
+          <button class="back" data-target="screenClasses">←</button>
+          <div><p>Класс</p><h2 id="classDetailTitle">—</h2></div>
+        </div>
+
+        <div class="form-card">
+          <label>Название класса<input id="classNameInput" placeholder="Например: 5А" /></label>
+          <label>Параллель<input id="classGradeInput" type="number" min="1" max="11" /></label>
+          <label>Группа
+            <select id="classGroupInput">
+              <option value="1">Начальная школа — 1–4</option>
+              <option value="2">Средняя школа — 5–8</option>
+              <option value="3">Старшая школа — 9–11</option>
+            </select>
+          </label>
+          <label>Количество учеников<input id="studentsCountInput" type="number" min="0" value="0" /></label>
+          <div class="button-row">
+            <button class="primary" id="saveClassBtn">Сохранить класс</button>
+            <button class="danger" id="deleteClassBtn">Удалить</button>
+          </div>
+        </div>
+
+        <div class="section-title">
+          <h3>События рейтинга</h3>
+          <p>Баллы добавляются через события, а лимит подкатегории не превышается</p>
+        </div>
+
+        <button class="primary full" id="openEventFormBtn">+ Добавить событие</button>
+        <div id="classScoresList" class="scores-list"></div>
+
+        <button class="secondary full" id="openUniformFromClassBtn">Школьная форма</button>
+      </section>
+
+      <section class="screen" id="screenEventForm">
+        <div class="screen-head">
+          <button class="back" data-target="screenClassDetail">←</button>
+          <div><p>Событие</p><h2 id="eventFormTitle">Добавить</h2></div>
+        </div>
+
+        <div class="form-card">
+          <label>Дата события<input id="eventDateInput" type="date" /></label>
+          <label>Категория и подкатегория<select id="eventSubcategoryInput"></select></label>
+          <label>Название события<input id="eventTitleInput" placeholder="Например: городские соревнования" /></label>
+          <label class="important-input">Баллы за событие<input id="eventPointsInput" type="number" min="0" value="0" /></label>
+          <label>Комментарий<input id="eventCommentInput" placeholder="Необязательно" /></label>
+          <button class="primary full" id="saveEventBtn">Сохранить событие</button>
+          <button class="danger full hidden" id="deleteEventBtn">Удалить событие</button>
+        </div>
+      </section>
+
+      <section class="screen" id="screenClassForm">
+        <div class="screen-head">
+          <button class="back" data-target="screenHome">←</button>
+          <div><p>Класс</p><h2>Добавить класс</h2></div>
+        </div>
+        <div class="form-card">
+          <label>Название класса<input id="newClassName" placeholder="Например: 5В" /></label>
+          <label>Параллель<input id="newClassGrade" type="number" min="1" max="11" value="5" /></label>
+          <label>Группа
+            <select id="newClassGroup">
+              <option value="1">Начальная школа — 1–4</option>
+              <option value="2" selected>Средняя школа — 5–8</option>
+              <option value="3">Старшая школа — 9–11</option>
+            </select>
+          </label>
+          <label>Количество учеников<input id="newClassStudents" type="number" min="0" value="0" /></label>
+          <button class="primary full" id="createClassBtn">Добавить класс</button>
+        </div>
+      </section>
+
+      <section class="screen" id="screenUniformClassSelect">
+        <div class="screen-head">
+          <button class="back" data-target="screenHome">←</button>
+          <div><p>Школьная форма</p><h2>Проверка месяца</h2></div>
+        </div>
+
+        <div class="legend">
+          <span><i class="green-dot"></i> проверено в текущем месяце</span>
+          <span><i class="red-dot"></i> не проверено</span>
+        </div>
+
+        <div id="uniformPalette" class="uniform-palette"></div>
+      </section>
+
+      <section class="screen" id="screenUniform">
+        <div class="screen-head">
+          <button class="back" data-target="screenUniformClassSelect">←</button>
+          <div><p>Школьная форма</p><h2 id="uniformTitle">—</h2></div>
+        </div>
+
+        <div class="stat-card" id="uniformStatusCard">
+          <span>Статус текущего месяца</span>
+          <strong id="uniformStatusText">—</strong>
+          <p id="uniformStatusSubtext">—</p>
+        </div>
+
+        <div class="stat-card">
+          <span>Средний балл по всем проверкам</span>
+          <strong id="uniformAverage">0</strong>
+          <p><span id="uniformChecksCount">0</span> проверок</p>
+        </div>
+
+        <div class="form-card uniform-form-card">
+          <label>Дата проверки<input id="uniformDateInput" type="date" /></label>
+          <label class="important-input huge-input">
+            Сколько учеников без формы
+            <input id="withoutUniformInput" type="number" min="0" value="0" />
+          </label>
+          <label>Комментарий<input id="uniformCommentInput" placeholder="Необязательно" /></label>
+          <button class="primary full" id="saveUniformBtn">Добавить проверку</button>
+        </div>
+
+        <div class="section-title"><h3>История проверок</h3><p>Можно удалять ошибочные записи</p></div>
+        <div id="uniformHistory" class="list"></div>
+      </section>
+
+      <section class="screen" id="screenCategories">
+        <div class="screen-head">
+          <button class="back" data-target="screenHome">←</button>
+          <div><p>Настройки</p><h2>Категории</h2></div>
+        </div>
+        <button class="primary full" id="addCategoryBtn">+ Добавить категорию</button>
+        <div id="categoriesList" class="category-list"></div>
+      </section>
+
+      <section class="screen" id="screenCategoryForm">
+        <div class="screen-head">
+          <button class="back" data-target="screenCategories">←</button>
+          <div><p>Категория</p><h2 id="categoryFormTitle">Добавить</h2></div>
+        </div>
+        <div class="form-card">
+          <label>Название категории<input id="categoryNameInput" /></label>
+          <label>Максимум баллов<input id="categoryMaxInput" type="number" value="100" /></label>
+          <label>Порядок<input id="categorySortInput" type="number" value="0" /></label>
+          <button class="primary full" id="saveCategoryBtn">Сохранить категорию</button>
+          <button class="danger full hidden" id="deleteCategoryBtn">Удалить категорию</button>
+        </div>
+      </section>
+
+      <section class="screen" id="screenSubcategoryForm">
+        <div class="screen-head">
+          <button class="back" data-target="screenCategories">←</button>
+          <div><p>Подкатегория</p><h2 id="subcategoryFormTitle">Добавить</h2></div>
+        </div>
+        <div class="form-card">
+          <label>Категория<select id="subcategoryCategoryInput"></select></label>
+          <label>Название подкатегории<input id="subcategoryNameInput" /></label>
+          <label>Максимум баллов<input id="subcategoryMaxInput" type="number" value="10" /></label>
+          <label>Порядок<input id="subcategorySortInput" type="number" value="0" /></label>
+          <button class="primary full" id="saveSubcategoryBtn">Сохранить подкатегорию</button>
+          <button class="danger full hidden" id="deleteSubcategoryBtn">Удалить подкатегорию</button>
+        </div>
+      </section>
+
+      <section class="screen" id="screenAllRating">
+        <div class="screen-head">
+          <button class="back" data-target="screenHome">←</button>
+          <div><p>Рейтинг</p><h2>Все классы</h2></div>
+        </div>
+        <div id="allRatingList" class="list"></div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
