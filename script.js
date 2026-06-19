@@ -3,11 +3,10 @@ const API_BASE = "https://school22-rating-api.onrender.com";
 let state = {
   groupId: null,
   selectedClass: null,
-  selectedStudent: null,
   classes: [],
-  students: [],
-  allStudents: [],
-  categories: []
+  categories: [],
+  classScores: [],
+  uniform: null
 };
 
 async function api(path, options = {}) {
@@ -15,11 +14,7 @@ async function api(path, options = {}) {
     headers: { "Content-Type": "application/json" },
     ...options
   });
-
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
+  if (!response.ok) throw new Error(await response.text());
   return response.json();
 }
 
@@ -43,29 +38,8 @@ function groupName(id) {
 }
 
 async function loadBase() {
-  try {
-    state.classes = await api("/api/classes");
-    state.categories = await api("/api/categories");
-    fillClassSelects();
-    fillCategorySelect();
-  } catch (error) {
-    toast("Ошибка загрузки API");
-    console.error(error);
-  }
-}
-
-function fillClassSelects() {
-  const html = state.classes.map(cls => `
-    <option value="${cls.id}">${cls.name} класс</option>
-  `).join("");
-
-  document.getElementById("studentClassSelect").innerHTML = html;
-}
-
-function fillCategorySelect() {
-  document.getElementById("subcategoryCategorySelect").innerHTML = state.categories.map(cat => `
-    <option value="${cat.id}">${cat.name}</option>
-  `).join("");
+  state.classes = await api("/api/classes");
+  state.categories = await api("/api/categories");
 }
 
 function openGroup(groupId) {
@@ -76,169 +50,134 @@ function openGroup(groupId) {
     ? state.classes
     : state.classes.filter(c => c.group_id === state.groupId);
 
-  document.getElementById("classesList").innerHTML = classes.map(cls => `
-    <button class="item" onclick="openClass(${cls.id})">
+  renderClassList("classesList", classes);
+  show("screenClasses");
+}
+
+function renderClassList(containerId, classes) {
+  document.getElementById(containerId).innerHTML = classes.map(cls => `
+    <button class="item" onclick="openClassDetail(${cls.id})">
       <div>
         <h3>${cls.name} класс</h3>
-        <p>${cls.group_name || ""}</p>
+        <p>${cls.group_name || ""} · учеников: ${cls.students_count || 0}</p>
       </div>
       <strong>›</strong>
     </button>
   `).join("");
-
-  show("screenClasses");
 }
 
-async function openClass(classId) {
+async function openClassDetail(classId) {
   state.selectedClass = state.classes.find(c => c.id === classId);
-  document.getElementById("studentsTitle").textContent = `${state.selectedClass.name} класс`;
+  document.getElementById("classDetailTitle").textContent = `${state.selectedClass.name} класс`;
+  document.getElementById("studentsCountInput").value = state.selectedClass.students_count || 0;
 
-  try {
-    state.students = await api(`/api/classes/${classId}/students`);
-  } catch (error) {
-    state.students = [];
-    console.error(error);
-  }
+  state.classScores = await api(`/api/classes/${classId}/category-scores`);
 
-  renderStudents();
-  show("screenStudents");
-}
-
-function renderStudents() {
-  const list = document.getElementById("studentsList");
-  list.innerHTML = state.students.map(student => `
-    <button class="item" onclick="openScores(${student.id})">
-      <div>
-        <h3>${student.full_name}</h3>
-        <p>${student.class_name || state.selectedClass.name} класс</p>
-      </div>
-      <strong>${student.total_score || 0}</strong>
-    </button>
-  `).join("");
-}
-
-async function openAllStudents() {
-  const result = [];
-  for (const cls of state.classes) {
-    try {
-      const students = await api(`/api/classes/${cls.id}/students`);
-      students.forEach(s => result.push(s));
-    } catch (e) {}
-  }
-
-  state.allStudents = result;
-
-  document.getElementById("allStudentsList").innerHTML = result.map(student => `
-    <button class="item" onclick="openStudentFromAll(${student.id}, '${student.class_name}')">
-      <div>
-        <h3>${student.full_name}</h3>
-        <p>${student.class_name} класс</p>
-      </div>
-      <strong>${student.total_score || 0}</strong>
-    </button>
-  `).join("");
-
-  show("screenAllStudents");
-}
-
-function openStudentFromAll(studentId, className) {
-  const cls = state.classes.find(c => c.name === className);
-  state.selectedClass = cls;
-  state.students = state.allStudents.filter(s => s.class_name === className);
-  openScores(studentId);
-}
-
-function openStudentForm(classId = null) {
-  document.getElementById("studentFormTitle").textContent = "Добавить ученика";
-  document.getElementById("studentNameInput").value = "";
-
-  if (classId || state.selectedClass) {
-    document.getElementById("studentClassSelect").value = classId || state.selectedClass.id;
-  }
-
-  show("screenStudentForm");
-}
-
-async function saveStudent() {
-  const name = document.getElementById("studentNameInput").value.trim();
-  const classId = Number(document.getElementById("studentClassSelect").value);
-
-  if (!name) {
-    toast("Введите ФИО ученика");
-    return;
-  }
-
-  try {
-    await api("/api/students", {
-      method: "POST",
-      body: JSON.stringify({
-        full_name: name,
-        class_id: classId
-      })
-    });
-
-    toast("Ученик добавлен");
-    await loadBase();
-    const cls = state.classes.find(c => c.id === classId);
-    state.selectedClass = cls;
-    await openClass(classId);
-  } catch (error) {
-    toast("Ошибка сохранения ученика");
-    console.error(error);
-  }
-}
-
-function openScores(studentId) {
-  state.selectedStudent = [...state.students, ...state.allStudents].find(s => s.id === studentId);
-  document.getElementById("scoresStudentName").textContent = state.selectedStudent.full_name;
-
-  document.getElementById("scoresList").innerHTML = state.categories.map(category => `
-    <section class="score-card">
-      <h3>${category.name}</h3>
-      ${(category.subcategories || []).map(sub => `
-        <div class="sub-score">
+  document.getElementById("classScoresList").innerHTML = state.classScores.map(cat => {
+    const isUniform = cat.name.toLowerCase().includes("форма");
+    return `
+      <section class="score-card">
+        <div class="score-row">
           <div>
-            <span>${sub.name}</span>
-            <small>до ${sub.max_points} баллов</small>
+            <span>${cat.name}</span>
+            <small>${isUniform ? "считается автоматически" : "до " + cat.max_points + " баллов"}</small>
           </div>
-          <input type="number" min="0" max="${sub.max_points}" value="0" data-subcategory="${sub.id}" />
+          <input 
+            type="number" 
+            min="0" 
+            max="${cat.max_points}" 
+            value="${cat.points || 0}"
+            data-category="${cat.id}"
+            ${isUniform ? "disabled" : ""}
+          />
         </div>
-      `).join("")}
-    </section>
-  `).join("");
+      </section>
+    `;
+  }).join("");
 
-  show("screenScores");
+  show("screenClassDetail");
 }
 
-async function saveScores() {
-  const inputs = [...document.querySelectorAll("[data-subcategory]")];
+async function saveClass() {
+  const studentsCount = Number(document.getElementById("studentsCountInput").value || 0);
+  await api(`/api/classes/${state.selectedClass.id}`, {
+    method: "PUT",
+    body: JSON.stringify({ students_count: studentsCount })
+  });
+  toast("Класс обновлён");
+  await loadBase();
+  state.selectedClass = state.classes.find(c => c.id === state.selectedClass.id);
+}
 
-  try {
-    for (const input of inputs) {
-      const subcategoryId = Number(input.dataset.subcategory);
-      const points = Number(input.value || 0);
+async function saveClassScores() {
+  const inputs = [...document.querySelectorAll("[data-category]")].filter(input => !input.disabled);
 
-      await api(`/api/students/${state.selectedStudent.id}/scores/${subcategoryId}`, {
-        method: "PUT",
-        body: JSON.stringify({ points })
-      });
-    }
-
-    toast("Баллы сохранены");
-    await openClass(state.selectedClass.id);
-  } catch (error) {
-    toast("Ошибка сохранения баллов");
-    console.error(error);
+  for (const input of inputs) {
+    const categoryId = Number(input.dataset.category);
+    const points = Number(input.value || 0);
+    await api(`/api/classes/${state.selectedClass.id}/category-scores/${categoryId}`, {
+      method: "PUT",
+      body: JSON.stringify({ points })
+    });
   }
+
+  toast("Рейтинг класса сохранён");
+  await openClassDetail(state.selectedClass.id);
+}
+
+function openUniformClassSelect() {
+  renderClassList("uniformClassesList", state.classes);
+  show("screenUniformClassSelect");
+}
+
+async function openUniform(classId = null) {
+  if (classId) {
+    state.selectedClass = state.classes.find(c => c.id === classId);
+  }
+
+  document.getElementById("uniformTitle").textContent = `${state.selectedClass.name} класс`;
+  state.uniform = await api(`/api/classes/${state.selectedClass.id}/uniform-checks`);
+
+  document.getElementById("uniformAverage").textContent = state.uniform.average_points || 0;
+  document.getElementById("uniformChecksCount").textContent = state.uniform.checks_count || 0;
+
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById("uniformDateInput").value = today;
+  document.getElementById("withoutUniformInput").value = 0;
+  document.getElementById("uniformCommentInput").value = "";
+
+  document.getElementById("uniformHistory").innerHTML = (state.uniform.checks || []).map(check => `
+    <article class="item">
+      <div>
+        <h3>${check.check_date}</h3>
+        <p>Без формы: ${check.without_uniform} · В форме: ${check.in_uniform} · ${check.percent_in_uniform}%</p>
+      </div>
+      <strong>${check.points}</strong>
+    </article>
+  `).join("");
+
+  show("screenUniform");
+}
+
+async function saveUniform() {
+  const check_date = document.getElementById("uniformDateInput").value;
+  const without_uniform = Number(document.getElementById("withoutUniformInput").value || 0);
+  const comment = document.getElementById("uniformCommentInput").value.trim() || null;
+
+  await api(`/api/classes/${state.selectedClass.id}/uniform-checks`, {
+    method: "POST",
+    body: JSON.stringify({ check_date, without_uniform, comment })
+  });
+
+  toast("Проверка формы добавлена");
+  await openUniform();
 }
 
 function renderCategories() {
-  document.getElementById("categoriesList").innerHTML = state.categories.map(category => `
+  document.getElementById("categoriesList").innerHTML = state.categories.map(cat => `
     <article class="category-card">
-      <h3>${category.name}</h3>
-      <ul>
-        ${(category.subcategories || []).map(sub => `<li>${sub.name} — до ${sub.max_points}</li>`).join("")}
-      </ul>
+      <h3>${cat.name}</h3>
+      <p>Максимум: ${cat.max_points} баллов</p>
     </article>
   `).join("");
 }
@@ -248,90 +187,50 @@ function openCategories() {
   show("screenCategories");
 }
 
-function openCategoryForm() {
-  document.getElementById("categoryNameInput").value = "";
-  document.getElementById("categoryMaxInput").value = 100;
-  show("screenCategoryForm");
-}
-
 async function saveCategory() {
   const name = document.getElementById("categoryNameInput").value.trim();
-  const max = Number(document.getElementById("categoryMaxInput").value || 100);
+  const max_points = Number(document.getElementById("categoryMaxInput").value || 10);
 
   if (!name) {
     toast("Введите название категории");
     return;
   }
 
-  try {
-    await api("/api/categories", {
-      method: "POST",
-      body: JSON.stringify({
-        name: name,
-        max_points: max,
-        sort_order: state.categories.length + 1
-      })
-    });
+  await api("/api/categories", {
+    method: "POST",
+    body: JSON.stringify({
+      name,
+      max_points,
+      sort_order: state.categories.length + 1
+    })
+  });
 
-    toast("Категория добавлена");
-  } catch (error) {
-    toast("Ошибка добавления категории");
-    console.error(error);
-    return;
-  }
-
-  try {
-    await loadBase();
-    openCategories();
-  } catch (error) {
-    console.warn("Категория сохранена, но список не обновился автоматически", error);
-    show("screenHome");
-  }
+  toast("Категория добавлена");
+  await loadBase();
+  openCategories();
 }
 
-function openSubcategoryForm() {
-  fillCategorySelect();
-  document.getElementById("subcategoryNameInput").value = "";
-  document.getElementById("subcategoryMaxInput").value = 10;
-  show("screenSubcategoryForm");
+async function openAllRating() {
+  const rating = await api("/api/ratings/classes");
+
+  document.getElementById("allRatingList").innerHTML = rating.map((row, index) => `
+    <button class="item" onclick="openClassDetail(${row.class_id})">
+      <div>
+        <h3>${index + 1}. ${row.class_name} класс</h3>
+        <p>Учеников: ${row.students_count || 0}</p>
+      </div>
+      <strong>${row.total || 0}</strong>
+    </button>
+  `).join("");
+
+  show("screenAllRating");
 }
 
-async function saveSubcategory() {
-  const categoryId = Number(document.getElementById("subcategoryCategorySelect").value);
-  const name = document.getElementById("subcategoryNameInput").value.trim();
-  const max = Number(document.getElementById("subcategoryMaxInput").value || 10);
-
-  if (!name) {
-    toast("Введите название подкатегории");
-    return;
-  }
-
-  try {
-    await api("/api/subcategories", {
-      method: "POST",
-      body: JSON.stringify({
-        category_id: categoryId,
-        name: name,
-        max_points: max,
-        sort_order: 99
-      })
-    });
-
-    toast("Подкатегория добавлена");
-  } catch (error) {
-    toast("Ошибка добавления подкатегории");
-    console.error(error);
-    return;
-  }
-
-  try {
-    await loadBase();
-    openCategories();
-  } catch (error) {
-    console.warn("Подкатегория сохранена, но список не обновился автоматически", error);
-    show("screenHome");
-  }
-}
+document.getElementById("openAdminBtn").addEventListener("click", () => show("screenHome"));
+document.getElementById("quickClasses").addEventListener("click", () => show("screenGroups"));
+document.getElementById("quickUniform").addEventListener("click", openUniformClassSelect);
+document.getElementById("quickCategories").addEventListener("click", openCategories);
+document.getElementById("quickAllRating").addEventListener("click", openAllRating);
 
 document.querySelectorAll(".group-card").forEach(btn => {
   btn.addEventListener("click", () => openGroup(btn.dataset.group));
@@ -341,26 +240,19 @@ document.querySelectorAll(".back").forEach(btn => {
   btn.addEventListener("click", () => show(btn.dataset.target));
 });
 
-document.getElementById("quickClasses").addEventListener("click", () => show("screenGroups"));
-document.getElementById("quickCategories").addEventListener("click", openCategories);
-document.getElementById("quickAddCategory").addEventListener("click", openCategoryForm);
-document.getElementById("quickAddSubcategory").addEventListener("click", openSubcategoryForm);
-document.getElementById("quickAllStudents").addEventListener("click", openAllStudents);
-document.getElementById("quickAddStudent").addEventListener("click", () => openStudentForm());
-
-document.getElementById("addStudentBtn").addEventListener("click", () => openStudentForm());
-document.getElementById("allAddStudentBtn").addEventListener("click", () => openStudentForm());
-document.getElementById("studentFormBack").addEventListener("click", () => show(state.selectedClass ? "screenStudents" : "screenHome"));
-document.getElementById("saveStudentBtn").addEventListener("click", saveStudent);
-document.getElementById("saveScoresBtn").addEventListener("click", saveScores);
-document.getElementById("addCategoryBtn").addEventListener("click", openCategoryForm);
-document.getElementById("addSubcategoryBtn").addEventListener("click", openSubcategoryForm);
+document.getElementById("saveClassBtn").addEventListener("click", saveClass);
+document.getElementById("saveClassScoresBtn").addEventListener("click", saveClassScores);
+document.getElementById("openUniformFromClassBtn").addEventListener("click", () => openUniform());
+document.getElementById("saveUniformBtn").addEventListener("click", saveUniform);
+document.getElementById("addCategoryBtn").addEventListener("click", () => show("screenCategoryForm"));
 document.getElementById("saveCategoryBtn").addEventListener("click", saveCategory);
-document.getElementById("saveSubcategoryBtn").addEventListener("click", saveSubcategory);
 
 document.getElementById("refreshBtn").addEventListener("click", async () => {
   await loadBase();
   toast("Обновлено");
 });
 
-loadBase();
+loadBase().catch(error => {
+  console.error(error);
+  toast("Ошибка загрузки API");
+});
