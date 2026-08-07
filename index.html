@@ -13,7 +13,7 @@
   <div class="app" id="app">
     <header class="top">
       <div>
-        <p>Админ-панель · <span id="matrixVersion">матрица v0.2</span></p>
+        <p>Админ-панель</p>
         <h1>Школа №22</h1>
       </div>
       <button id="refreshBtn">↻</button>
@@ -32,13 +32,13 @@
       <section class="screen" id="screenHome">
         <div class="screen-head">
           <button class="back" data-target="screenStart">←</button>
-          <div><p>Админка · <span id="activeYear">2026/2027</span></p><h2>Управление</h2></div>
+          <div><p>Админка</p><h2>Управление</h2></div>
         </div>
 
         <button class="alert-card hidden" id="uniformAlertBtn">
           <b>!</b>
           <div>
-            <h3 id="uniformAlertTitle">Нет проверки школьной формы</h3>
+            <h3 id="uniformAlertTitle">Не проверена школьная форма</h3>
             <p id="uniformAlertText">Откройте раздел школьной формы</p>
           </div>
         </button>
@@ -46,7 +46,7 @@
         <div class="quick-grid animated-grid">
           <button class="quick-card primary-card" id="quickClasses"><b>🏫</b><span>Классы и рейтинг</span></button>
           <button class="quick-card" id="quickUniform"><b>👕</b><span>Школьная форма</span></button>
-          <button class="quick-card" id="quickMatrix"><b>▦</b><span>Матрица</span></button>
+          <button class="quick-card" id="quickCategories"><b>▦</b><span>Категории</span></button>
           <button class="quick-card" id="quickAddClass"><b>＋</b><span>Добавить класс</span></button>
           <button class="quick-card dark" id="quickAllRating"><b>🏆</b><span>Общий рейтинг</span></button>
         </div>
@@ -96,38 +96,32 @@
           </div>
         </div>
 
-        <div class="stats-grid compact-stats">
-          <div class="stat-card"><span>Итоговый рейтинг</span><strong id="classTotal">0</strong><p>из 100</p></div>
-          <div class="stat-card"><span>Заполнено критериев</span><strong id="classProgress">0%</strong><p id="classProgressText">0 из 100</p></div>
-        </div>
-
         <div class="section-title">
-          <h3>Показатели матрицы</h3>
-          <p>Выберите направление и критерий — баллы рассчитаются автоматически</p>
+          <h3>События рейтинга</h3>
+          <p>Баллы добавляются через события, а лимит подкатегории не превышается</p>
         </div>
 
-        <div id="directionScores" class="scores-list"></div>
+        <button class="primary full" id="openEventFormBtn">+ Добавить событие</button>
+        <div id="classScoresList" class="scores-list"></div>
 
-        <button class="secondary full" id="openUniformFromClassBtn">👕 Школьная форма и сменная обувь</button>
+        <button class="secondary full" id="openUniformFromClassBtn">Школьная форма</button>
       </section>
 
-      <section class="screen" id="screenMeasurement">
+      <section class="screen" id="screenEventForm">
         <div class="screen-head">
           <button class="back" data-target="screenClassDetail">←</button>
-          <div><p id="measurementCode">Критерий</p><h2 id="measurementTitle">Показатель</h2></div>
+          <div><p>Событие</p><h2 id="eventFormTitle">Добавить</h2></div>
         </div>
 
-        <div class="stat-card" id="criterionInfo"></div>
         <div class="form-card">
-          <label>Дата значения<input id="measurementDate" type="date" /></label>
-          <label class="check-line"><input id="measurementNA" type="checkbox" /> Критерий неприменим по возрасту — N/A</label>
-          <div id="dynamicFields"></div>
-          <label>Комментарий<textarea id="measurementComment" rows="3" placeholder="Без ФИО учеников"></textarea></label>
-          <label>Подтверждение или ссылка<input id="measurementEvidence" placeholder="Номер протокола или ссылка" /></label>
-          <button class="primary full" id="saveMeasurementBtn">Рассчитать и сохранить</button>
+          <label>Дата события<input id="eventDateInput" type="date" /></label>
+          <label>Категория и подкатегория<select id="eventSubcategoryInput"></select></label>
+          <label>Название события<input id="eventTitleInput" placeholder="Например: городские соревнования" /></label>
+          <label class="important-input">Баллы за событие<input id="eventPointsInput" type="number" min="0" value="0" /></label>
+          <label>Комментарий<input id="eventCommentInput" placeholder="Необязательно" /></label>
+          <button class="primary full" id="saveEventBtn">Сохранить событие</button>
+          <button class="danger full hidden" id="deleteEventBtn">Удалить событие</button>
         </div>
-        <div class="section-title"><h3>История значений</h3><p id="aggregationHint">Используется последнее значение</p></div>
-        <div id="measurementHistory" class="list"></div>
       </section>
 
       <section class="screen" id="screenClassForm">
@@ -153,12 +147,12 @@
       <section class="screen" id="screenUniformClassSelect">
         <div class="screen-head">
           <button class="back" data-target="screenHome">←</button>
-          <div><p>Школьная форма</p><h2>Срезы учебного года</h2></div>
+          <div><p>Школьная форма</p><h2>Проверка месяца</h2></div>
         </div>
 
         <div class="legend">
-          <span><i class="green-dot"></i> есть хотя бы один срез</span>
-          <span><i class="red-dot"></i> срезов пока нет</span>
+          <span><i class="green-dot"></i> проверено в текущем месяце</span>
+          <span><i class="red-dot"></i> не проверено</span>
         </div>
 
         <div id="uniformPalette" class="uniform-palette"></div>
@@ -171,31 +165,23 @@
         </div>
 
         <div class="stat-card" id="uniformStatusCard">
-          <span>Статус учебного года</span>
+          <span>Статус текущего месяца</span>
           <strong id="uniformStatusText">—</strong>
           <p id="uniformStatusSubtext">—</p>
         </div>
 
         <div class="stat-card">
-          <span>Средний балл школьной формы</span>
+          <span>Средний балл по всем проверкам</span>
           <strong id="uniformAverage">0</strong>
-          <p><span id="uniformChecksCount">0</span> из 4 срезов</p>
-        </div>
-
-        <div class="stat-card">
-          <span>Средний балл сменной обуви</span>
-          <strong id="shoesAverage">0</strong>
-          <p>фиксируется в той же проверке</p>
+          <p><span id="uniformChecksCount">0</span> проверок</p>
         </div>
 
         <div class="form-card uniform-form-card">
           <label>Дата проверки<input id="uniformDateInput" type="date" /></label>
-          <label>Фактически присутствуют<input id="presentCountInput" type="number" min="0" value="0" /></label>
           <label class="important-input huge-input">
             Сколько учеников без формы
             <input id="withoutUniformInput" type="number" min="0" value="0" />
           </label>
-          <label class="important-input">Сколько учеников без сменной обуви<input id="withoutShoesInput" type="number" min="0" value="0" /></label>
           <label>Комментарий<input id="uniformCommentInput" placeholder="Необязательно" /></label>
           <button class="primary full" id="saveUniformBtn">Добавить проверку</button>
         </div>
@@ -207,10 +193,10 @@
       <section class="screen" id="screenCategories">
         <div class="screen-head">
           <button class="back" data-target="screenHome">←</button>
-          <div><p>Классный рост v0.2</p><h2>Матрица рейтинга</h2></div>
+          <div><p>Настройки</p><h2>Категории</h2></div>
         </div>
-        <div class="alert-card"><b>i</b><div><h3>10 направлений и 100 критериев</h3><p>Пороги меняются только выпуском новой версии матрицы.</p></div></div>
-        <div id="matrixList" class="category-list"></div>
+        <button class="primary full" id="addCategoryBtn">+ Добавить категорию</button>
+        <div id="categoriesList" class="category-list"></div>
       </section>
 
       <section class="screen" id="screenCategoryForm">
