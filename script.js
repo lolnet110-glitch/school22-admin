@@ -252,20 +252,36 @@ function renderEventFormula() {
   `).join("");
 }
 
-async function calculateEventPoints() {
+function calculateEventPoints() {
   const criterion = selectedEventCriterion();
   if (!criterion?.formula_code) return toast("У критерия не задана формула");
   const input_data = {};
   document.querySelectorAll("[data-formula-field]").forEach(input => {
     input_data[input.dataset.formulaField] = Number(input.value || 0);
   });
+
+  const target = Number(criterion.target || 0);
+  const cap = value => Math.round(Math.max(0, Math.min(10, value)) * 100) / 100;
+  let points = 0;
+
   try {
-    const result = await api("/api/calculate-score", {
-      method: "POST",
-      body: JSON.stringify({ subcategory_id: criterion.id, input_data })
-    });
-    document.getElementById("eventPointsInput").value = result.points;
-    toast(`Рассчитано: ${result.points} баллов`);
+    if (criterion.formula_code === "ОХВ(T)") {
+      points = target > 0 ? cap(10 * input_data.percent / target) : 0;
+    } else if (criterion.formula_code === "КОЛ(q)") {
+      points = target > 0 ? cap(10 * input_data.quantity / target) : 0;
+    } else if (criterion.formula_code === "СРЕЗ") {
+      if (input_data.violations > input_data.present) throw new Error();
+      points = input_data.present > 0 ? cap(10 * (input_data.present - input_data.violations) / input_data.present) : 0;
+    } else if (criterion.formula_code === "ФАКТ") {
+      if (![0, 5, 10].includes(input_data.fact_score)) throw new Error();
+      points = input_data.fact_score;
+    } else if (criterion.formula_code === "ИНД") {
+      points = cap(input_data.school + 2 * input_data.municipal + 3 * input_data.regional + 4 * input_data.federal);
+    } else if (criterion.formula_code === "КГ/УЧ(T)") {
+      points = input_data.denominator > 0 && target > 0 ? cap(10 * (input_data.amount / input_data.denominator) / target) : 0;
+    }
+    document.getElementById("eventPointsInput").value = points;
+    toast(`Рассчитано: ${points} баллов`);
   } catch (error) {
     toast("Проверьте исходные данные формулы");
   }
