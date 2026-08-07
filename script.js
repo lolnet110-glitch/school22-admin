@@ -11,6 +11,7 @@ let state = {
   ratings: [],
   classScores: [],
   classEvents: [],
+  uniformByClass: {},
   uniform: null
 };
 
@@ -63,10 +64,37 @@ function uniformLatestDate(row) {
 }
 
 async function loadBase() {
-  state.classes = await api("/api/classes");
-  state.categories = await api("/api/categories");
-  state.ratings = await api("/api/ratings/classes");
+  [state.classes, state.categories, state.ratings] = await Promise.all([
+    api("/api/classes"),
+    api("/api/categories"),
+    api("/api/ratings/classes")
+  ]);
+  const summaries = await Promise.all(state.classes.map(async cls => {
+    try { return [cls.id, await api(`/api/classes/${cls.id}/uniform-checks`)]; }
+    catch (error) { return [cls.id, null]; }
+  }));
+  state.uniformByClass = Object.fromEntries(summaries);
+  hydrateMatrixRatings();
   renderUniformAlert();
+}
+
+function hydrateMatrixRatings() {
+  state.ratings.forEach(row => {
+    const summary = state.uniformByClass[row.class_id];
+    const responsibility = (row.categories || []).find(cat => cat.matrix_number === 8);
+    if (responsibility && summary) {
+      responsibility.uniform_summary = summary;
+      const uniformCriterion = (responsibility.subcategories || []).find(sub => sub.code === "КР-08.01");
+      if (uniformCriterion) {
+        responsibility.points = Math.round((Number(responsibility.points || 0) - Number(uniformCriterion.points || 0) + Number(summary.average_points || 0)) * 100) / 100;
+        uniformCriterion.points = Number(summary.average_points || 0);
+        uniformCriterion.uniform_summary = summary;
+      }
+    }
+    const possible = (row.categories || []).reduce((sum, cat) => sum + Number(cat.max_points || 0), 0);
+    const earned = (row.categories || []).reduce((sum, cat) => sum + Number(cat.points || 0), 0);
+    row.total = possible ? Math.round(earned / possible * 10000) / 100 : 0;
+  });
 }
 
 function renderUniformAlert() {
@@ -119,6 +147,18 @@ async function openClassDetail(classId) {
 
   state.classScores = await api(`/api/classes/${classId}/category-scores`);
   state.classEvents = await api(`/api/classes/${classId}/subcategory-events`);
+
+  const summary = state.uniformByClass[classId];
+  const responsibility = state.classScores.find(cat => cat.matrix_number === 8);
+  if (responsibility && summary) {
+    responsibility.uniform_summary = summary;
+    const uniformCriterion = (responsibility.subcategories || []).find(sub => sub.code === "КР-08.01");
+    if (uniformCriterion) {
+      responsibility.points = Math.round((Number(responsibility.points || 0) - Number(uniformCriterion.points || 0) + Number(summary.average_points || 0)) * 100) / 100;
+      uniformCriterion.points = Number(summary.average_points || 0);
+      uniformCriterion.uniform_summary = summary;
+    }
+  }
 
   renderClassScores();
   show("screenClassDetail");
