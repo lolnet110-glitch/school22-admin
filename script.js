@@ -81,12 +81,31 @@ async function loadBase() {
   state.ratings = result[3];
   document.getElementById("matrixVersion").textContent = "матрица v" + state.meta.matrix_version;
   document.getElementById("activeYear").textContent = state.meta.academic_year;
+  renderUniformAlert();
 }
 
 function ratingForClass(classId) {
   return state.ratings.find(function (row) {
     return row.class_id === classId;
   });
+}
+
+function uniformSummary(classId) {
+  const rating = ratingForClass(classId) || {};
+  return rating.uniform || {points: 0, checks_count: 0, checks_remaining: 4};
+}
+
+function renderUniformAlert() {
+  const unchecked = state.classes.filter(function (item) {
+    return Number(uniformSummary(item.id).checks_count || 0) === 0;
+  });
+  const button = document.getElementById("uniformAlertBtn");
+  button.classList.toggle("hidden", unchecked.length === 0);
+  document.getElementById("uniformAlertTitle").textContent = unchecked.length
+    ? "Нет проверки школьной формы: " + unchecked.length + " классов"
+    : "Школьная форма проверена";
+  document.getElementById("uniformAlertText").textContent =
+    "Откройте палитру: по матрице допускается до 4 общих срезов за учебный год";
 }
 
 function renderClassList() {
@@ -131,7 +150,7 @@ function renderDirectionScores(directions) {
     const criteria = (direction.criteria || []).map(function (criterion) {
       const target = criterion.target + " " + criterion.unit;
       const action = criterion.code === "КР-08.01" || criterion.code === "КР-08.02"
-        ? "openResponsibility()"
+        ? "openUniform(" + state.selectedClass.id + ")"
         : "openMeasurement('" + criterion.code + "')";
       const points = criterion.applicable === false ? "N/A" : round(criterion.points);
       return '<button class="criterion-row" onclick="' + action + '">' +
@@ -278,47 +297,65 @@ async function deleteMeasurement(id) {
   }
 }
 
-async function openResponsibility() {
+function renderUniformPalette() {
+  document.getElementById("uniformPalette").innerHTML = state.classes.map(function (item) {
+    const summary = uniformSummary(item.id);
+    const checked = Number(summary.checks_count || 0) > 0;
+    return '<button class="uniform-tile ' + (checked ? "checked" : "unchecked") +
+      '" onclick="openUniform(' + item.id + ')"><strong>' + escapeHtml(item.name) +
+      '</strong><span>' + (checked ? summary.checks_count + ' из 4' : 'нет срезов') + '</span>' +
+      '<small>форма: ' + round(summary.points) + ' балла</small></button>';
+  }).join("");
+}
+
+async function openUniform(classId) {
+  if (classId) {
+    state.selectedClass = state.classes.find(function (item) { return item.id === classId; });
+  }
   if (!state.selectedClass) return;
   const data = await api("/api/classes/" + state.selectedClass.id + "/responsibility-checks");
-  document.getElementById("responsibilityTitle").textContent =
-    state.selectedClass.name + " · форма и обувь";
+  document.getElementById("uniformTitle").textContent = state.selectedClass.name + " класс";
   document.getElementById("uniformAverage").textContent = round(data.uniform_points);
   document.getElementById("shoesAverage").textContent = round(data.shoes_points);
-  document.getElementById("checksRemaining").textContent =
-    "Осталось проверок: " + data.checks_remaining;
-  document.getElementById("responsibilityDate").value = today();
-  document.getElementById("presentCount").value = state.selectedClass.students_count || "";
-  document.getElementById("uniformViolations").value = 0;
-  document.getElementById("shoesViolations").value = 0;
-  document.getElementById("responsibilityComment").value = "";
-  document.getElementById("saveResponsibilityBtn").disabled = data.checks_remaining === 0;
-  document.getElementById("responsibilityHistory").innerHTML = (data.checks || []).map(function (item) {
+  document.getElementById("uniformChecksCount").textContent = data.checks_count;
+  document.getElementById("uniformStatusText").textContent = data.checks_count
+    ? "Срезов: " + data.checks_count + " из 4"
+    : "Пока не проверено";
+  document.getElementById("uniformStatusSubtext").textContent =
+    "Осталось срезов: " + data.checks_remaining;
+  document.getElementById("uniformStatusCard").classList.toggle("checked", data.checks_count > 0);
+  document.getElementById("uniformDateInput").value = today();
+  document.getElementById("presentCountInput").value = state.selectedClass.students_count || "";
+  document.getElementById("withoutUniformInput").value = 0;
+  document.getElementById("withoutShoesInput").value = 0;
+  document.getElementById("uniformCommentInput").value = "";
+  document.getElementById("saveUniformBtn").disabled = data.checks_remaining === 0;
+  document.getElementById("uniformHistory").innerHTML = (data.checks || []).map(function (item) {
     return '<article class="item"><div><h4>' + escapeHtml(item.check_date) + '</h4>' +
-      '<p>Присутствовали: ' + item.present_count + ' · форма: ' +
-      item.uniform_violations + ' наруш. · обувь: ' + item.shoes_violations + ' наруш.</p>' +
+      '<p>Присутствовали: ' + item.present_count + ' · без формы: ' +
+      item.uniform_violations + ' · без сменной обуви: ' + item.shoes_violations + '</p>' +
       '<p>' + escapeHtml(item.comment || "") + '</p></div>' +
       '<button class="mini-danger" onclick="deleteResponsibility(' + item.id + ')">Удалить</button></article>';
   }).join("") || '<p class="notice">Проверок пока нет.</p>';
-  show("screenResponsibility");
+  show("screenUniform");
 }
 
-async function saveResponsibility() {
+async function saveUniform() {
   try {
     await api("/api/classes/" + state.selectedClass.id + "/responsibility-checks", {
       method: "POST",
       body: JSON.stringify({
-        check_date: document.getElementById("responsibilityDate").value,
-        present_count: Number(document.getElementById("presentCount").value || 0),
-        uniform_violations: Number(document.getElementById("uniformViolations").value || 0),
-        shoes_violations: Number(document.getElementById("shoesViolations").value || 0),
-        comment: document.getElementById("responsibilityComment").value.trim() || null
+        check_date: document.getElementById("uniformDateInput").value,
+        present_count: Number(document.getElementById("presentCountInput").value || 0),
+        uniform_violations: Number(document.getElementById("withoutUniformInput").value || 0),
+        shoes_violations: Number(document.getElementById("withoutShoesInput").value || 0),
+        comment: document.getElementById("uniformCommentInput").value.trim() || null
       })
     });
-    toast("Общий срез сохранён");
+    toast("Проверка школьной формы сохранена");
     await loadBase();
-    await openClassDetail(state.selectedClass.id);
-    await openResponsibility();
+    renderUniformPalette();
+    await openUniform(state.selectedClass.id);
   } catch (error) {
     toast(error.message);
   }
@@ -330,8 +367,8 @@ async function deleteResponsibility(id) {
     await api("/api/responsibility-checks/" + id, {method: "DELETE"});
     toast("Проверка удалена");
     await loadBase();
-    await openClassDetail(state.selectedClass.id);
-    await openResponsibility();
+    renderUniformPalette();
+    await openUniform(state.selectedClass.id);
   } catch (error) {
     toast(error.message);
   }
@@ -416,19 +453,27 @@ function renderAllRating() {
 
 window.openClassDetail = openClassDetail;
 window.openMeasurement = openMeasurement;
-window.openResponsibility = openResponsibility;
+window.openUniform = openUniform;
 window.deleteMeasurement = deleteMeasurement;
 window.deleteResponsibility = deleteResponsibility;
 
 document.getElementById("openAdminBtn").addEventListener("click", function () { show("screenHome"); });
 document.getElementById("quickClasses").addEventListener("click", function () { show("screenGroups"); });
+document.getElementById("quickUniform").addEventListener("click", function () {
+  renderUniformPalette();
+  show("screenUniformClassSelect");
+});
+document.getElementById("uniformAlertBtn").addEventListener("click", function () {
+  renderUniformPalette();
+  show("screenUniformClassSelect");
+});
 document.getElementById("quickAllRating").addEventListener("click", function () {
   renderAllRating();
   show("screenAllRating");
 });
 document.getElementById("quickMatrix").addEventListener("click", function () {
   renderMatrix();
-  show("screenMatrix");
+  show("screenCategories");
 });
 document.getElementById("quickAddClass").addEventListener("click", function () { show("screenClassForm"); });
 document.querySelectorAll(".group-card").forEach(function (button) {
@@ -452,10 +497,12 @@ document.getElementById("refreshBtn").addEventListener("click", async function (
 document.getElementById("saveClassBtn").addEventListener("click", saveClass);
 document.getElementById("deleteClassBtn").addEventListener("click", archiveClass);
 document.getElementById("createClassBtn").addEventListener("click", createClass);
-document.getElementById("openResponsibilityBtn").addEventListener("click", openResponsibility);
+document.getElementById("openUniformFromClassBtn").addEventListener("click", function () {
+  openUniform(state.selectedClass && state.selectedClass.id);
+});
 document.getElementById("measurementNA").addEventListener("change", toggleNAFields);
 document.getElementById("saveMeasurementBtn").addEventListener("click", saveMeasurement);
-document.getElementById("saveResponsibilityBtn").addEventListener("click", saveResponsibility);
+document.getElementById("saveUniformBtn").addEventListener("click", saveUniform);
 
 loadBase().catch(function (error) {
   console.error(error);
