@@ -115,8 +115,14 @@
 
         <div class="form-card">
           <label>Дата события<input id="eventDateInput" type="date" /></label>
-          <label>Категория и подкатегория<select id="eventSubcategoryInput"></select></label>
+          <label>Категория и критерий<select id="eventSubcategoryInput"></select></label>
           <label>Название события<input id="eventTitleInput" placeholder="Например: городские соревнования" /></label>
+          <div class="formula-box hidden" id="eventFormulaBox">
+            <b id="eventFormulaTitle">Расчёт по формуле</b>
+            <p id="eventFormulaText"></p>
+            <div id="eventFormulaFields" class="formula-fields"></div>
+            <button class="secondary full" type="button" id="calculateEventPointsBtn">Рассчитать баллы</button>
+          </div>
           <label class="important-input">Баллы за событие<input id="eventPointsInput" type="number" min="0" value="0" /></label>
           <label>Комментарий<input id="eventCommentInput" placeholder="Необязательно" /></label>
           <button class="primary full" id="saveEventBtn">Сохранить событие</button>
@@ -216,15 +222,32 @@
       <section class="screen" id="screenSubcategoryForm">
         <div class="screen-head">
           <button class="back" data-target="screenCategories">←</button>
-          <div><p>Подкатегория</p><h2 id="subcategoryFormTitle">Добавить</h2></div>
+          <div><p>Критерий</p><h2 id="subcategoryFormTitle">Добавить</h2></div>
         </div>
         <div class="form-card">
           <label>Категория<select id="subcategoryCategoryInput"></select></label>
-          <label>Название подкатегории<input id="subcategoryNameInput" /></label>
+          <label>Название критерия<input id="subcategoryNameInput" /></label>
+          <label>Код критерия<input id="subcategoryCodeInput" placeholder="Например: КР-11.01" /></label>
+          <label>Формула
+            <select id="subcategoryFormulaInput">
+              <option value="">Ручные баллы</option>
+              <option value="ОХВ(T)">ОХВ(T) — охват до цели</option>
+              <option value="КОЛ(q)">КОЛ(q) — количество до цели</option>
+              <option value="СРЕЗ">СРЕЗ — присутствующие и нарушения</option>
+              <option value="ФАКТ">ФАКТ — 0 / 5 / 10</option>
+              <option value="ИНД">ИНД — индивидуальные достижения</option>
+              <option value="КГ/УЧ(T)">КГ/УЧ(T) — объём на ученика</option>
+            </select>
+          </label>
+          <label>Целевое значение<input id="subcategoryTargetInput" type="number" step="any" /></label>
+          <label>Единица измерения<input id="subcategoryUnitInput" placeholder="%, события, кг/уч." /></label>
+          <label>Что измеряем<textarea id="subcategoryMeasurementInput" rows="3"></textarea></label>
+          <label>Правило начисления<textarea id="subcategoryScoringRuleInput" rows="3"></textarea></label>
+          <label>Периодичность<input id="subcategoryPeriodicityInput" /></label>
           <label>Максимум баллов<input id="subcategoryMaxInput" type="number" value="10" /></label>
           <label>Порядок<input id="subcategorySortInput" type="number" value="0" /></label>
-          <button class="primary full" id="saveSubcategoryBtn">Сохранить подкатегорию</button>
-          <button class="danger full hidden" id="deleteSubcategoryBtn">Удалить подкатегорию</button>
+          <button class="primary full" id="saveSubcategoryBtn">Сохранить критерий</button>
+          <button class="danger full hidden" id="deleteSubcategoryBtn">Удалить критерий</button>
         </div>
       </section>
 

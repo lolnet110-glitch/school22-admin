@@ -53,12 +53,12 @@ function groupName(id) {
 }
 
 function isUniformCheckedCurrentMonth(row) {
-  const uniform = (row.categories || []).find(cat => cat.name.toLowerCase().includes("форма"));
+  const uniform = (row.categories || []).find(cat => cat.uniform_summary);
   return Boolean(uniform?.uniform_summary?.is_checked_current_month);
 }
 
 function uniformLatestDate(row) {
-  const uniform = (row.categories || []).find(cat => cat.name.toLowerCase().includes("форма"));
+  const uniform = (row.categories || []).find(cat => cat.uniform_summary);
   return uniform?.uniform_summary?.latest_check_date || null;
 }
 
@@ -125,33 +125,21 @@ async function openClassDetail(classId) {
 }
 
 function renderClassScores() {
-  document.getElementById("classScoresList").innerHTML = state.classScores.map(cat => {
-    const isUniform = cat.name.toLowerCase().includes("форма");
-
-    if (isUniform) {
-      const checked = cat.uniform_summary?.is_checked_current_month;
-      return `
-        <section class="score-card ${checked ? "uniform-ok" : "uniform-bad"}">
-          <h3>${cat.name}</h3>
-          <p>${checked ? "Проверено в текущем месяце" : "В текущем месяце не проверено"}</p>
-          <div class="big-score">${cat.points || 0}</div>
-        </section>
-      `;
-    }
-
-    return `
+  document.getElementById("classScoresList").innerHTML = state.classScores.map(cat => `
       <section class="score-card">
         <h3>${cat.name} <em>${cat.points || 0}/${cat.max_points}</em></h3>
-        <p>${cat.maxed ? `Лимит категории достигнут: ${cat.raw_points} → ${cat.points}` : "Баллы складываются из событий"}</p>
+        <p>${cat.maxed ? `Лимит категории достигнут: ${cat.raw_points} → ${cat.points}` : "До 10 баллов за каждый критерий"}</p>
         ${(cat.subcategories || []).map(sub => `
           <div class="sub-block">
             <div class="sub-head">
               <div>
-                <b>${sub.name}</b>
+                <b>${sub.code ? `${sub.code} · ` : ""}${sub.name}</b>
                 <small>${sub.maxed ? `Лимит: ${sub.raw_points} → ${sub.points}` : `до ${sub.max_points} баллов`}</small>
               </div>
               <button class="mini" onclick="openEventForm(null, ${sub.id})">+ событие</button>
             </div>
+            ${sub.formula_code ? `<p class="formula-line"><b>${sub.formula_code}</b> · цель ${sub.target ?? "—"} ${sub.unit || ""}</p>` : ""}
+            ${sub.code === "КР-08.01" ? `<p class="${sub.uniform_summary?.is_checked_current_month ? "uniform-note-ok" : "uniform-note-bad"}">${sub.uniform_summary?.is_checked_current_month ? "Форма проверена в текущем месяце" : "Форма в текущем месяце не проверена"}</p>` : ""}
             <div class="event-list">
               ${(sub.events || []).map(event => `
                 <button class="event-row" onclick="openEventForm(${event.id}, ${sub.id})">
@@ -166,8 +154,7 @@ function renderClassScores() {
           </div>
         `).join("")}
       </section>
-    `;
-  }).join("");
+    `).join("");
 }
 
 async function saveClass() {
@@ -222,14 +209,66 @@ function fillEventSubcategorySelect(selectedSubcategoryId = null) {
   const options = [];
 
   state.categories.forEach(cat => {
-    if (cat.name.toLowerCase().includes("форма")) return;
     (cat.subcategories || []).forEach(sub => {
-      options.push(`<option value="${sub.id}">${cat.name} → ${sub.name} (до ${sub.max_points})</option>`);
+      options.push(`<option value="${sub.id}">${cat.name} → ${sub.name}${sub.formula_code ? ` · ${sub.formula_code}` : ""}</option>`);
     });
   });
 
   select.innerHTML = options.join("");
   if (selectedSubcategoryId) select.value = String(selectedSubcategoryId);
+}
+
+function selectedEventCriterion() {
+  const id = Number(document.getElementById("eventSubcategoryInput").value);
+  for (const category of state.categories) {
+    const criterion = (category.subcategories || []).find(item => item.id === id);
+    if (criterion) return criterion;
+  }
+  return null;
+}
+
+const FORMULA_FIELDS = {
+  "ОХВ(T)": [["percent", "Фактический процент"]],
+  "КОЛ(q)": [["quantity", "Количество"]],
+  "СРЕЗ": [["present", "Присутствуют"], ["violations", "Нарушения"]],
+  "ФАКТ": [["fact_score", "Уровень выполнения: 0, 5 или 10"]],
+  "ИНД": [["school", "Школьный уровень"], ["municipal", "Муниципальный"], ["regional", "Региональный"], ["federal", "Федеральный / международный"]],
+  "КГ/УЧ(T)": [["amount", "Общий объём, кг"], ["denominator", "Численность класса"]]
+};
+
+function renderEventFormula() {
+  const criterion = selectedEventCriterion();
+  const box = document.getElementById("eventFormulaBox");
+  if (!criterion?.formula_code) {
+    box.classList.add("hidden");
+    return;
+  }
+
+  box.classList.remove("hidden");
+  document.getElementById("eventFormulaTitle").textContent = `${criterion.formula_code} · цель ${criterion.target ?? "—"} ${criterion.unit || ""}`;
+  document.getElementById("eventFormulaText").textContent = criterion.scoring_rule || criterion.measurement || "Заполните исходные данные и рассчитайте балл.";
+  document.getElementById("eventFormulaFields").innerHTML = (FORMULA_FIELDS[criterion.formula_code] || []).map(([name, label]) => `
+    <label>${label}<input data-formula-field="${name}" type="number" min="0" step="any" value="0" /></label>
+  `).join("");
+}
+
+async function calculateEventPoints() {
+  const criterion = selectedEventCriterion();
+  if (!criterion?.formula_code) return toast("У критерия не задана формула");
+  const input_data = {};
+  document.querySelectorAll("[data-formula-field]").forEach(input => {
+    input_data[input.dataset.formulaField] = Number(input.value || 0);
+  });
+  try {
+    const result = await api("/api/calculate-score", {
+      method: "POST",
+      body: JSON.stringify({ subcategory_id: criterion.id, input_data })
+    });
+    document.getElementById("eventPointsInput").value = result.points;
+    toast(`Рассчитано: ${result.points} баллов`);
+  } catch (error) {
+    toast("Проверьте исходные данные формулы");
+  }
 }
 
 function openEventForm(eventId = null, subcategoryId = null) {
@@ -251,6 +290,7 @@ function openEventForm(eventId = null, subcategoryId = null) {
   document.getElementById("eventPointsInput").value = state.selectedEvent?.points || 0;
   document.getElementById("eventCommentInput").value = state.selectedEvent?.comment || "";
   document.getElementById("deleteEventBtn").classList.toggle("hidden", !eventId);
+  renderEventFormula();
 
   show("screenEventForm");
 }
@@ -391,14 +431,16 @@ function renderCategories() {
         ${(cat.subcategories || []).map(sub => `
           <div class="sub-item">
             <div>
-              <b>${sub.name}</b>
-              <small>до ${sub.max_points} · порядок: ${sub.sort_order}</small>
+              <b>${sub.code ? `${sub.code} · ` : ""}${sub.name}</b>
+              <small>до ${sub.max_points} · ${sub.formula_code || "ручные баллы"}${sub.target != null ? ` · цель ${sub.target} ${sub.unit || ""}` : ""}</small>
+              ${sub.measurement ? `<p class="criterion-description">${sub.measurement}</p>` : ""}
+              ${sub.scoring_rule ? `<p class="criterion-formula">${sub.scoring_rule}</p>` : ""}
             </div>
             <button class="mini" onclick="openSubcategoryForm(${sub.id})">Изменить</button>
           </div>
         `).join("") || `<p class="empty">Подкатегорий нет</p>`}
       </div>
-      ${cat.name.toLowerCase().includes("форма") ? "" : `<button class="secondary full" onclick="openSubcategoryForm(null, ${cat.id})">+ Подкатегория</button>`}
+      <button class="secondary full" onclick="openSubcategoryForm(null, ${cat.id})">+ Критерий</button>
     </article>
   `).join("");
 }
@@ -471,13 +513,19 @@ function openSubcategoryForm(id = null, categoryId = null) {
 
   const select = document.getElementById("subcategoryCategoryInput");
   select.innerHTML = state.categories
-    .filter(c => !c.name.toLowerCase().includes("форма"))
     .map(c => `<option value="${c.id}">${c.name}</option>`)
     .join("");
 
   select.value = state.selectedSubcategory?.category_id || categoryId || state.categories[0]?.id || "";
 
   document.getElementById("subcategoryNameInput").value = state.selectedSubcategory?.name || "";
+  document.getElementById("subcategoryCodeInput").value = state.selectedSubcategory?.code || "";
+  document.getElementById("subcategoryFormulaInput").value = state.selectedSubcategory?.formula_code || "";
+  document.getElementById("subcategoryTargetInput").value = state.selectedSubcategory?.target ?? "";
+  document.getElementById("subcategoryUnitInput").value = state.selectedSubcategory?.unit || "";
+  document.getElementById("subcategoryMeasurementInput").value = state.selectedSubcategory?.measurement || "";
+  document.getElementById("subcategoryScoringRuleInput").value = state.selectedSubcategory?.scoring_rule || "";
+  document.getElementById("subcategoryPeriodicityInput").value = state.selectedSubcategory?.periodicity || "";
   document.getElementById("subcategoryMaxInput").value = state.selectedSubcategory?.max_points || 10;
   document.getElementById("subcategorySortInput").value = state.selectedSubcategory?.sort_order || 0;
   document.getElementById("deleteSubcategoryBtn").classList.toggle("hidden", !id);
@@ -489,6 +537,13 @@ async function saveSubcategory() {
   const payload = {
     category_id: Number(document.getElementById("subcategoryCategoryInput").value),
     name: document.getElementById("subcategoryNameInput").value.trim(),
+    code: document.getElementById("subcategoryCodeInput").value.trim() || null,
+    formula_code: document.getElementById("subcategoryFormulaInput").value || null,
+    target: document.getElementById("subcategoryTargetInput").value === "" ? null : Number(document.getElementById("subcategoryTargetInput").value),
+    unit: document.getElementById("subcategoryUnitInput").value.trim() || null,
+    measurement: document.getElementById("subcategoryMeasurementInput").value.trim() || null,
+    scoring_rule: document.getElementById("subcategoryScoringRuleInput").value.trim() || null,
+    periodicity: document.getElementById("subcategoryPeriodicityInput").value.trim() || null,
     max_points: Number(document.getElementById("subcategoryMaxInput").value || 10),
     sort_order: Number(document.getElementById("subcategorySortInput").value || 0)
   };
@@ -500,13 +555,13 @@ async function saveSubcategory() {
       method: "PUT",
       body: JSON.stringify(payload)
     });
-    toast("Подкатегория обновлена");
+    toast("Критерий обновлён");
   } else {
     await api("/api/subcategories", {
       method: "POST",
       body: JSON.stringify(payload)
     });
-    toast("Подкатегория добавлена");
+    toast("Критерий добавлен");
   }
 
   await loadBase();
@@ -515,10 +570,10 @@ async function saveSubcategory() {
 
 async function deleteSubcategory() {
   if (!state.selectedSubcategory) return;
-  if (!confirmAction("Удалить подкатегорию?")) return;
+  if (!confirmAction("Удалить критерий?")) return;
 
   await api(`/api/subcategories/${state.selectedSubcategory.id}`, { method: "DELETE" });
-  toast("Подкатегория удалена");
+  toast("Критерий удалён");
   await loadBase();
   openCategories();
 }
@@ -566,6 +621,8 @@ document.getElementById("createClassBtn").addEventListener("click", createClass)
 document.getElementById("openEventFormBtn").addEventListener("click", () => openEventForm());
 document.getElementById("saveEventBtn").addEventListener("click", saveEvent);
 document.getElementById("deleteEventBtn").addEventListener("click", deleteEvent);
+document.getElementById("eventSubcategoryInput").addEventListener("change", renderEventFormula);
+document.getElementById("calculateEventPointsBtn").addEventListener("click", calculateEventPoints);
 document.getElementById("openUniformFromClassBtn").addEventListener("click", () => openUniform(state.selectedClass.id));
 document.getElementById("saveUniformBtn").addEventListener("click", saveUniform);
 document.getElementById("addCategoryBtn").addEventListener("click", () => openCategoryForm());
