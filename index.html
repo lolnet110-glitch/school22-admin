@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=20260809-2" />
 </head>
 <body>
   <div class="app" id="app">
@@ -46,7 +46,8 @@
         <div class="quick-grid animated-grid">
           <button class="quick-card primary-card" id="quickClasses"><b>🏫</b><span>Классы и рейтинг</span></button>
           <button class="quick-card" id="quickUniform"><b>👕</b><span>Школьная форма</span></button>
-          <button class="quick-card" id="quickCategories"><b>▦</b><span>Категории</span></button>
+          <button class="quick-card direction-quick" id="quickDirections"><b>◫</b><span>Направления рейтинга</span></button>
+          <button class="quick-card" id="quickCategories"><b>⚙</b><span>Настройка критериев</span></button>
           <button class="quick-card" id="quickAddClass"><b>＋</b><span>Добавить класс</span></button>
           <button class="quick-card dark" id="quickAllRating"><b>🏆</b><span>Общий рейтинг</span></button>
         </div>
@@ -150,6 +151,39 @@
         </div>
       </section>
 
+      <section class="screen" id="screenDirections">
+        <div class="screen-head">
+          <button class="back" data-target="screenHome">←</button>
+          <div><p>Рейтинг</p><h2>Направления</h2></div>
+        </div>
+        <div class="admin-direction-intro">
+          <strong>10</strong>
+          <div><h3>Самостоятельные разделы</h3><p>Откройте направление, чтобы посмотреть классы, критерии и отдельные показатели.</p></div>
+        </div>
+        <div id="adminDirectionCatalog" class="admin-direction-catalog"></div>
+      </section>
+
+      <section class="screen" id="screenDirectionDetail">
+        <div class="screen-head">
+          <button class="back" data-target="screenDirections">←</button>
+          <div><p id="adminDirectionLabel">Направление</p><h2 id="adminDirectionTitle">—</h2></div>
+        </div>
+
+        <div class="admin-direction-stats">
+          <article class="stat-card"><span>Лидер</span><strong id="adminDirectionLeader">—</strong><p id="adminDirectionLeaderPoints">0 баллов</p></article>
+          <article class="stat-card"><span>Средний балл</span><strong id="adminDirectionAverage">0</strong><p>По всем классам</p></article>
+          <article class="stat-card"><span>Заполнено</span><strong id="adminDirectionCoverage">0/0</strong><p>Классов с результатами</p></article>
+          <article class="stat-card"><span>Критериев</span><strong id="adminDirectionCriteriaCount">0</strong><p>В этом направлении</p></article>
+        </div>
+
+        <div class="section-title"><h3>Рейтинг направления</h3><p>Нажмите на класс, чтобы добавить или изменить его результаты</p></div>
+        <div id="adminDirectionRanking" class="direction-ranking-admin"></div>
+
+        <div class="section-title"><h3>Показатели</h3><p>Формулы, средние значения и заполненность по каждому критерию</p></div>
+        <div id="adminDirectionCriteria" class="direction-criteria-admin"></div>
+        <button class="secondary full" id="openCriteriaSettingsBtn">Настроить категории и критерии</button>
+      </section>
+
       <section class="screen" id="screenUniformClassSelect">
         <div class="screen-head">
           <button class="back" data-target="screenHome">←</button>
@@ -199,7 +233,7 @@
       <section class="screen" id="screenCategories">
         <div class="screen-head">
           <button class="back" data-target="screenHome">←</button>
-          <div><p>Настройки</p><h2>Категории</h2></div>
+          <div><p>Настройки</p><h2>Категории и критерии</h2></div>
         </div>
         <button class="primary full" id="addCategoryBtn">+ Добавить категорию</button>
         <div id="categoriesList" class="category-list"></div>
@@ -263,6 +297,6 @@
     <div class="toast" id="toast"></div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=20260809-2"></script>
 </body>
 </html>
