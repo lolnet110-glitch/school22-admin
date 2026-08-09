@@ -16,6 +16,7 @@ body{margin:0;font-family:Manrope,system-ui,sans-serif;background:var(--bg);colo
 .top p,.screen-head p{margin:0 0 3px;color:var(--purple);font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
 .top h1{margin:0;font-size:26px;letter-spacing:-.05em}
 .top button,.back{width:44px;height:44px;border:0;border-radius:16px;background:#fff;color:var(--purple);box-shadow:var(--shadow);font-size:22px;font-weight:900}
+.top-actions{display:flex;align-items:center;gap:8px}.top .fullscreen-button{width:36px;height:36px;border-radius:13px;color:#626a7d;background:rgba(255,255,255,.72);box-shadow:0 8px 22px rgba(17,24,47,.07);font-size:18px;opacity:.76;transition:.18s}.top .fullscreen-button:hover,.top .fullscreen-button[aria-pressed="true"]{color:var(--purple);background:#fff;opacity:1;transform:translateY(-1px)}:fullscreen{background:var(--bg)}:fullscreen .app{max-width:none;min-height:100vh}
 main{padding:12px 16px 28px}
 .screen{display:none}
 .screen.active{display:block;animation:screenIn .28s ease both}
