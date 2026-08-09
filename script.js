@@ -1,4 +1,4 @@
-const API_BASE = "https://school22-rating-api.onrender.com";
+const API_BASE = "";
 
 let state = {
   groupId: null,
@@ -6,6 +6,8 @@ let state = {
   selectedCategory: null,
   selectedSubcategory: null,
   selectedEvent: null,
+  selectedDirectionId: null,
+  classDetailReturn: "screenClasses",
   classes: [],
   categories: [],
   ratings: [],
@@ -18,6 +20,7 @@ let state = {
 async function api(path, options = {}) {
   const response = await fetch(API_BASE + path, {
     headers: { "Content-Type": "application/json" },
+    cache: "no-store",
     ...options
   });
 
@@ -53,6 +56,21 @@ function groupName(id) {
   return "Старшая школа";
 }
 
+function sortedDirections() {
+  return [...state.categories].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+}
+
+function directionForRow(row, base) {
+  return (row.categories || []).find(category =>
+    category.id === base.id ||
+    (base.matrix_number && category.matrix_number === base.matrix_number)
+  );
+}
+
+function currentScreenId() {
+  return document.querySelector(".screen.active")?.id || "screenHome";
+}
+
 function isUniformCheckedCurrentMonth(row) {
   const uniform = (row.categories || []).find(cat => cat.uniform_summary);
   return Boolean(uniform?.uniform_summary?.is_checked_current_month);
@@ -76,6 +94,7 @@ async function loadBase() {
   state.uniformByClass = Object.fromEntries(summaries);
   hydrateMatrixRatings();
   renderUniformAlert();
+  if (state.categories.length && !state.selectedDirectionId) state.selectedDirectionId = sortedDirections()[0]?.id || null;
 }
 
 function hydrateMatrixRatings() {
@@ -136,6 +155,12 @@ function renderClassList(containerId, classes, mode = "detail") {
 }
 
 async function openClassDetail(classId) {
+  const current = currentScreenId();
+  if (current === "screenDirectionDetail") state.classDetailReturn = "screenDirectionDetail";
+  else if (current === "screenAllRating") state.classDetailReturn = "screenAllRating";
+  else if (!["screenClassDetail", "screenEventForm", "screenUniform"].includes(current)) state.classDetailReturn = "screenClasses";
+  document.querySelector("#screenClassDetail .back").dataset.target = state.classDetailReturn;
+
   state.selectedClass = state.classes.find(c => c.id === classId);
   if (!state.selectedClass) return toast("Класс не найден");
 
@@ -162,6 +187,85 @@ async function openClassDetail(classId) {
 
   renderClassScores();
   show("screenClassDetail");
+}
+
+function renderAdminDirectionCatalog() {
+  const directions = sortedDirections();
+  document.getElementById("adminDirectionCatalog").innerHTML = directions.map((direction, index) => {
+    const values = state.ratings.map(row => Number(directionForRow(row, direction)?.points || 0));
+    const average = values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length * 10) / 10 : 0;
+    const active = values.filter(value => value > 0).length;
+    return `
+      <button class="admin-direction-card" onclick="openDirection(${direction.id})">
+        <span>${String(direction.matrix_number || direction.sort_order || index + 1).padStart(2, "0")}</span>
+        <div><h3>${direction.name}</h3><p>${(direction.subcategories || []).length} критериев · ${active}/${state.ratings.length} классов заполнено</p></div>
+        <strong>${average}</strong>
+      </button>
+    `;
+  }).join("");
+}
+
+function openDirections() {
+  renderAdminDirectionCatalog();
+  show("screenDirections");
+}
+
+function openDirection(directionId) {
+  state.selectedDirectionId = Number(directionId);
+  const base = sortedDirections().find(direction => direction.id === state.selectedDirectionId);
+  if (!base) return toast("Направление не найдено");
+
+  const ranking = state.ratings.map(row => ({
+    row,
+    category: directionForRow(row, base),
+    points: Number(directionForRow(row, base)?.points || 0)
+  })).sort((a, b) => b.points - a.points || a.row.class_name.localeCompare(b.row.class_name, "ru"));
+  const average = ranking.length ? Math.round(ranking.reduce((sum, item) => sum + item.points, 0) / ranking.length * 10) / 10 : 0;
+  const coverage = ranking.filter(item => item.points > 0).length;
+  const leader = ranking[0];
+  const sampleCategory = ranking.find(item => item.category)?.category;
+  const criteria = sampleCategory?.subcategories || base.subcategories || [];
+
+  document.getElementById("adminDirectionLabel").textContent = `Направление ${String(base.matrix_number || base.sort_order || 1).padStart(2, "0")}`;
+  document.getElementById("adminDirectionTitle").textContent = base.name;
+  document.getElementById("adminDirectionLeader").textContent = leader?.row?.class_name || "—";
+  document.getElementById("adminDirectionLeaderPoints").textContent = `${Math.round((leader?.points || 0) * 10) / 10} из ${base.max_points || 100}`;
+  document.getElementById("adminDirectionAverage").textContent = average;
+  document.getElementById("adminDirectionCoverage").textContent = `${coverage}/${ranking.length}`;
+  document.getElementById("adminDirectionCriteriaCount").textContent = criteria.length;
+
+  document.getElementById("adminDirectionRanking").innerHTML = ranking.map((item, index) => `
+    <button class="direction-class-row" onclick="openClassDetail(${item.row.class_id})">
+      <span>${index + 1}</span>
+      <div><h3>${item.row.class_name} класс</h3><p>${item.row.students_count || 0} учеников</p><i><b style="width:${Math.min(100, item.points)}%"></b></i></div>
+      <strong>${Math.round(item.points * 10) / 10}</strong>
+    </button>
+  `).join("");
+
+  document.getElementById("adminDirectionCriteria").innerHTML = criteria.map(criterion => {
+    const classValues = ranking.map(item => {
+      const sub = (item.category?.subcategories || []).find(candidate => candidate.id === criterion.id || candidate.code === criterion.code);
+      return { row: item.row, points: Number(sub?.points || 0) };
+    }).sort((a, b) => b.points - a.points);
+    const criterionAverage = classValues.length ? Math.round(classValues.reduce((sum, item) => sum + item.points, 0) / classValues.length * 10) / 10 : 0;
+    const criterionCoverage = classValues.filter(item => item.points > 0).length;
+    return `
+      <article class="direction-criterion-admin-card">
+        <div class="criterion-admin-head">
+          <div><span>${criterion.code || "Показатель"}</span><h3>${criterion.name}</h3></div>
+          <button class="mini" onclick="openSubcategoryForm(${criterion.id})">Изменить</button>
+        </div>
+        <div class="criterion-admin-metrics"><strong>${criterionAverage}</strong><p>средний балл</p><b>${criterionCoverage}/${classValues.length}</b><p>классов</p></div>
+        <p>${criterion.measurement || "Описание показателя не заполнено"}</p>
+        <div class="criterion-admin-formula"><b>${criterion.formula_code || "Ручные баллы"}</b><span>${criterion.scoring_rule || `До ${criterion.max_points || 10} баллов`}</span></div>
+        <div class="criterion-class-chips">
+          ${classValues.slice(0, 6).map(item => `<button onclick="openClassDetail(${item.row.class_id})"><span>${item.row.class_name}</span><b>${Math.round(item.points * 10) / 10}</b></button>`).join("")}
+        </div>
+      </article>
+    `;
+  }).join("") || `<p class="empty">Критерии пока не добавлены</p>`;
+
+  show("screenDirectionDetail");
 }
 
 function renderClassScores() {
@@ -659,6 +763,7 @@ document.getElementById("openAdminBtn").addEventListener("click", () => {
 document.getElementById("uniformAlertBtn").addEventListener("click", openUniformClassSelect);
 document.getElementById("quickClasses").addEventListener("click", () => show("screenGroups"));
 document.getElementById("quickUniform").addEventListener("click", openUniformClassSelect);
+document.getElementById("quickDirections").addEventListener("click", openDirections);
 document.getElementById("quickCategories").addEventListener("click", openCategories);
 document.getElementById("quickAddClass").addEventListener("click", () => show("screenClassForm"));
 document.getElementById("quickAllRating").addEventListener("click", openAllRating);
@@ -686,6 +791,7 @@ document.getElementById("saveCategoryBtn").addEventListener("click", saveCategor
 document.getElementById("deleteCategoryBtn").addEventListener("click", deleteCategory);
 document.getElementById("saveSubcategoryBtn").addEventListener("click", saveSubcategory);
 document.getElementById("deleteSubcategoryBtn").addEventListener("click", deleteSubcategory);
+document.getElementById("openCriteriaSettingsBtn").addEventListener("click", openCategories);
 
 document.getElementById("refreshBtn").addEventListener("click", async () => {
   await loadBase();
