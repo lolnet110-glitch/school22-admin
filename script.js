@@ -45,6 +45,33 @@ function toast(message) {
   setTimeout(() => el.classList.remove("show"), 2300);
 }
 
+function isFullscreen() {
+  return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function syncFullscreenButton() {
+  const active = isFullscreen();
+  const button = document.getElementById("fullscreenBtn");
+  button.textContent = active ? "×" : "⛶";
+  button.setAttribute("aria-pressed", String(active));
+  button.setAttribute("aria-label", active ? "Выйти из полноэкранного режима" : "Открыть админку на весь экран");
+}
+
+async function toggleFullscreen() {
+  try {
+    if (!isFullscreen()) {
+      const open = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+      if (!open) return toast("Полноэкранный режим не поддерживается браузером");
+      await open.call(document.documentElement);
+    } else {
+      const close = document.exitFullscreen || document.webkitExitFullscreen;
+      if (close) await close.call(document);
+    }
+  } catch (error) {
+    toast("Не удалось открыть полноэкранный режим");
+  }
+}
+
 function confirmAction(text) {
   return confirm(text);
 }
@@ -797,6 +824,9 @@ document.getElementById("refreshBtn").addEventListener("click", async () => {
   await loadBase();
   toast("Обновлено");
 });
+document.getElementById("fullscreenBtn").addEventListener("click", toggleFullscreen);
+document.addEventListener("fullscreenchange", syncFullscreenButton);
+document.addEventListener("webkitfullscreenchange", syncFullscreenButton);
 
 loadBase().catch(error => {
   console.error(error);
