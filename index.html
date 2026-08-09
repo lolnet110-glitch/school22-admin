@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260809-2" />
+  <link rel="stylesheet" href="style.css?v=20260809-3" />
 </head>
 <body>
   <div class="app" id="app">
@@ -16,7 +16,10 @@
         <p>Админ-панель</p>
         <h1>Школа №22</h1>
       </div>
-      <button id="refreshBtn">↻</button>
+      <div class="top-actions">
+        <button class="fullscreen-button" id="fullscreenBtn" aria-label="Открыть админку на весь экран" aria-pressed="false">⛶</button>
+        <button id="refreshBtn" aria-label="Обновить данные">↻</button>
+      </div>
     </header>
 
     <main>
@@ -297,6 +300,6 @@
     <div class="toast" id="toast"></div>
   </div>
 
-  <script src="script.js?v=20260809-2"></script>
+  <script src="script.js?v=20260809-3"></script>
 </body>
 </html>
