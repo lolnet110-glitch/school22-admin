@@ -992,34 +992,11 @@ document.addEventListener("fullscreenchange", syncFullscreenButton);
 document.addEventListener("webkitfullscreenchange", syncFullscreenButton);
 
 async function bootstrap() {
-  try {
-    const authenticated = await checkSession();
-    if (authenticated) {
-      setAuthenticated(true);
-      await loadBase();
-    } else if (window.SCHOOL22_DEMO_SNAPSHOT) {
-      state.demoMode = true;
-      setAuthenticated(true);
-      document.querySelector(".top > div > p").textContent = "Админ-панель · автономный демо-режим";
-      await loadBase();
-      toast("Открыт безопасный демо-режим без Render");
-    } else {
-      setAuthenticated(false);
-    }
-  } catch (error) {
-    console.error(error);
-    if (window.SCHOOL22_DEMO_SNAPSHOT) {
-      state.demoMode = true;
-      setAuthenticated(true);
-      await loadBase();
-      toast("Открыт безопасный демо-режим без Render");
-    } else {
-      setAuthenticated(false);
-      document.getElementById("loginError").textContent = "Сервер временно недоступен. Попробуйте ещё раз.";
-      document.getElementById("loginError").classList.remove("hidden");
-    }
-  }
+  state.demoMode = true;
+  setAuthenticated(true);
+  document.querySelector(".top > div > p").textContent = "Админ-панель · автономный демо-режим";
+  await loadBase();
+  toast("Открыт безопасный демо-режим без Render");
 }
 
 bootstrap();
-
