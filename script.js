@@ -17,12 +17,91 @@ let state = {
   uniform: null
 };
 
+function setAuthenticated(authenticated) {
+  const app = document.getElementById("app");
+  const gate = document.getElementById("authGate");
+  app.classList.toggle("app-locked", !authenticated);
+  app.setAttribute("aria-hidden", String(!authenticated));
+  gate.classList.toggle("hidden", authenticated);
+  if (!authenticated) {
+    document.getElementById("adminPasswordInput").value = "";
+    document.getElementById("adminPasswordInput").focus();
+  }
+}
+
+function authErrorMessage(error) {
+  try {
+    const parsed = JSON.parse(error.message);
+    return parsed.detail || "Не удалось выполнить вход";
+  } catch (_) {
+    return error.message || "Не удалось выполнить вход";
+  }
+}
+
+async function checkSession() {
+  const response = await fetch("/api/auth/me", {
+    credentials: "same-origin",
+    cache: "no-store"
+  });
+  if (!response.ok) return false;
+  const result = await response.json();
+  return Boolean(result.authenticated);
+}
+
+async function login(event) {
+  event.preventDefault();
+  const button = document.getElementById("loginBtn");
+  const errorBox = document.getElementById("loginError");
+  const password = document.getElementById("adminPasswordInput").value;
+  button.disabled = true;
+  button.textContent = "Проверяем…";
+  errorBox.classList.add("hidden");
+
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+    if (!response.ok) throw new Error(await response.text());
+    setAuthenticated(true);
+    await loadBase();
+    show("screenStart");
+  } catch (error) {
+    errorBox.textContent = authErrorMessage(error);
+    errorBox.classList.remove("hidden");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Войти в админку";
+  }
+}
+
+async function logout() {
+  try {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store"
+    });
+  } finally {
+    setAuthenticated(false);
+  }
+}
+
 async function api(path, options = {}) {
   const response = await fetch(API_BASE + path, {
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     cache: "no-store",
     ...options
   });
+
+  if (response.status === 401) {
+    setAuthenticated(false);
+    throw new Error(JSON.stringify({ detail: "Сессия закончилась. Войдите ещё раз." }));
+  }
 
   if (!response.ok) {
     let text = await response.text();
@@ -171,7 +250,7 @@ function openGroup(groupId) {
 
 function renderClassList(containerId, classes, mode = "detail") {
   document.getElementById(containerId).innerHTML = classes.map(cls => `
-    <button class="item" onclick="${mode === "uniform" ? `openUniform(${cls.id})` : `openClassDetail(${cls.id})`}">
+    <button class="item" data-action="${mode === "uniform" ? "open-uniform" : "open-class"}" data-id="${cls.id}">
       <div>
         <h3>${cls.name} класс</h3>
         <p>${cls.group_name || ""} · учеников: ${cls.students_count || 0}</p>
@@ -223,7 +302,7 @@ function renderAdminDirectionCatalog() {
     const average = values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length * 10) / 10 : 0;
     const active = values.filter(value => value > 0).length;
     return `
-      <button class="admin-direction-card" onclick="openDirection(${direction.id})">
+      <button class="admin-direction-card" data-action="open-direction" data-id="${direction.id}">
         <span>${String(direction.matrix_number || direction.sort_order || index + 1).padStart(2, "0")}</span>
         <div><h3>${direction.name}</h3><p>${(direction.subcategories || []).length} критериев · ${active}/${state.ratings.length} классов заполнено</p></div>
         <strong>${average}</strong>
@@ -262,7 +341,7 @@ function openDirection(directionId) {
   document.getElementById("adminDirectionCriteriaCount").textContent = criteria.length;
 
   document.getElementById("adminDirectionRanking").innerHTML = ranking.map((item, index) => `
-    <button class="direction-class-row" onclick="openClassDetail(${item.row.class_id})">
+    <button class="direction-class-row" data-action="open-class" data-id="${item.row.class_id}">
       <span>${index + 1}</span>
       <div><h3>${item.row.class_name} класс</h3><p>${item.row.students_count || 0} учеников</p><i><b style="width:${Math.min(100, item.points)}%"></b></i></div>
       <strong>${Math.round(item.points * 10) / 10}</strong>
@@ -280,13 +359,13 @@ function openDirection(directionId) {
       <article class="direction-criterion-admin-card">
         <div class="criterion-admin-head">
           <div><span>${criterion.code || "Показатель"}</span><h3>${criterion.name}</h3></div>
-          <button class="mini" onclick="openSubcategoryForm(${criterion.id})">Изменить</button>
+          <button class="mini" data-action="open-subcategory" data-id="${criterion.id}">Изменить</button>
         </div>
         <div class="criterion-admin-metrics"><strong>${criterionAverage}</strong><p>средний балл</p><b>${criterionCoverage}/${classValues.length}</b><p>классов</p></div>
         <p>${criterion.measurement || "Описание показателя не заполнено"}</p>
         <div class="criterion-admin-formula"><b>${criterion.formula_code || "Ручные баллы"}</b><span>${criterion.scoring_rule || `До ${criterion.max_points || 10} баллов`}</span></div>
         <div class="criterion-class-chips">
-          ${classValues.slice(0, 6).map(item => `<button onclick="openClassDetail(${item.row.class_id})"><span>${item.row.class_name}</span><b>${Math.round(item.points * 10) / 10}</b></button>`).join("")}
+          ${classValues.slice(0, 6).map(item => `<button data-action="open-class" data-id="${item.row.class_id}"><span>${item.row.class_name}</span><b>${Math.round(item.points * 10) / 10}</b></button>`).join("")}
         </div>
       </article>
     `;
@@ -307,13 +386,13 @@ function renderClassScores() {
                 <b>${sub.code ? `${sub.code} · ` : ""}${sub.name}</b>
                 <small>${sub.maxed ? `Лимит: ${sub.raw_points} → ${sub.points}` : `до ${sub.max_points} баллов`}</small>
               </div>
-              <button class="mini" onclick="openEventForm(null, ${sub.id})">+ событие</button>
+              <button class="mini" data-action="open-event-new" data-subcategory-id="${sub.id}">+ событие</button>
             </div>
             ${sub.formula_code ? `<p class="formula-line"><b>${sub.formula_code}</b> · цель ${sub.target ?? "—"} ${sub.unit || ""}</p>` : ""}
             ${sub.code === "КР-08.01" ? `<p class="${sub.uniform_summary?.is_checked_current_month ? "uniform-note-ok" : "uniform-note-bad"}">${sub.uniform_summary?.is_checked_current_month ? "Форма проверена в текущем месяце" : "Форма в текущем месяце не проверена"}</p>` : ""}
             <div class="event-list">
               ${(sub.events || []).map(event => `
-                <button class="event-row" onclick="openEventForm(${event.id}, ${sub.id})">
+                <button class="event-row" data-action="open-event" data-id="${event.id}" data-subcategory-id="${sub.id}">
                   <div>
                     <span>${event.title}</span>
                     <small>${event.event_date}${event.comment ? " · " + event.comment : ""}</small>
@@ -530,7 +609,7 @@ function renderUniformPalette() {
     const latest = uniformLatestDate(row);
 
     return `
-      <button class="uniform-tile ${checked ? "checked" : "unchecked"}" onclick="openUniform(${row.class_id})">
+      <button class="uniform-tile ${checked ? "checked" : "unchecked"}" data-action="open-uniform" data-id="${row.class_id}">
         <strong>${row.class_name}</strong>
         <span>${checked ? "Проверено" : "Не проверено"}</span>
         <small>${latest ? `Последняя: ${latest}` : "Проверок нет"}</small>
@@ -571,7 +650,7 @@ async function openUniform(classId = null) {
       </div>
       <div class="item-actions">
         <strong>${check.points}</strong>
-        <button class="mini-danger" onclick="deleteUniformCheck(${check.id})">Удалить</button>
+        <button class="mini-danger" data-action="delete-uniform" data-id="${check.id}">Удалить</button>
       </div>
     </article>
   `).join("");
@@ -612,7 +691,7 @@ function renderCategories() {
           <h3>${cat.name}</h3>
           <p>Максимум: ${cat.max_points} баллов · порядок: ${cat.sort_order}</p>
         </div>
-        <button class="mini" onclick="openCategoryForm(${cat.id})">Изменить</button>
+        <button class="mini" data-action="open-category" data-id="${cat.id}">Изменить</button>
       </div>
       <div class="sub-list">
         ${(cat.subcategories || []).map(sub => `
@@ -623,11 +702,11 @@ function renderCategories() {
               ${sub.measurement ? `<p class="criterion-description">${sub.measurement}</p>` : ""}
               ${sub.scoring_rule ? `<p class="criterion-formula">${sub.scoring_rule}</p>` : ""}
             </div>
-            <button class="mini" onclick="openSubcategoryForm(${sub.id})">Изменить</button>
+            <button class="mini" data-action="open-subcategory" data-id="${sub.id}">Изменить</button>
           </div>
         `).join("") || `<p class="empty">Подкатегорий нет</p>`}
       </div>
-      <button class="secondary full" onclick="openSubcategoryForm(null, ${cat.id})">+ Критерий</button>
+      <button class="secondary full" data-action="open-subcategory-new" data-category-id="${cat.id}">+ Критерий</button>
     </article>
   `).join("");
 }
@@ -769,7 +848,7 @@ async function openAllRating() {
   const rating = await api("/api/ratings/classes");
 
   document.getElementById("allRatingList").innerHTML = rating.map((row, index) => `
-    <button class="item" onclick="openClassDetail(${row.class_id})">
+    <button class="item" data-action="open-class" data-id="${row.class_id}">
       <div>
         <h3>${index + 1}. ${row.class_name} класс</h3>
         <p>Учеников: ${row.students_count || 0}</p>
@@ -824,11 +903,53 @@ document.getElementById("refreshBtn").addEventListener("click", async () => {
   await loadBase();
   toast("Обновлено");
 });
+document.getElementById("loginForm").addEventListener("submit", login);
+document.getElementById("logoutBtn").addEventListener("click", logout);
+document.getElementById("togglePasswordBtn").addEventListener("click", () => {
+  const input = document.getElementById("adminPasswordInput");
+  const button = document.getElementById("togglePasswordBtn");
+  const visible = input.type === "text";
+  input.type = visible ? "password" : "text";
+  button.setAttribute("aria-pressed", String(!visible));
+  button.setAttribute("aria-label", visible ? "Показать пароль" : "Скрыть пароль");
+});
+
+document.addEventListener("click", event => {
+  const target = event.target.closest("[data-action]");
+  if (!target) return;
+  const id = target.dataset.id ? Number(target.dataset.id) : null;
+  const subcategoryId = target.dataset.subcategoryId ? Number(target.dataset.subcategoryId) : null;
+  const categoryId = target.dataset.categoryId ? Number(target.dataset.categoryId) : null;
+  const actions = {
+    "open-class": () => openClassDetail(id),
+    "open-uniform": () => openUniform(id),
+    "open-direction": () => openDirection(id),
+    "open-subcategory": () => openSubcategoryForm(id),
+    "open-subcategory-new": () => openSubcategoryForm(null, categoryId),
+    "open-event": () => openEventForm(id, subcategoryId),
+    "open-event-new": () => openEventForm(null, subcategoryId),
+    "delete-uniform": () => deleteUniformCheck(id),
+    "open-category": () => openCategoryForm(id)
+  };
+  const action = actions[target.dataset.action];
+  if (action) action();
+});
+
 document.getElementById("fullscreenBtn").addEventListener("click", toggleFullscreen);
 document.addEventListener("fullscreenchange", syncFullscreenButton);
 document.addEventListener("webkitfullscreenchange", syncFullscreenButton);
 
-loadBase().catch(error => {
-  console.error(error);
-  toast("Ошибка загрузки API");
-});
+async function bootstrap() {
+  try {
+    const authenticated = await checkSession();
+    setAuthenticated(authenticated);
+    if (authenticated) await loadBase();
+  } catch (error) {
+    console.error(error);
+    setAuthenticated(false);
+    document.getElementById("loginError").textContent = "Сервер временно недоступен. Попробуйте ещё раз.";
+    document.getElementById("loginError").classList.remove("hidden");
+  }
+}
+
+bootstrap();

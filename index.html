@@ -7,16 +7,37 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260809-3" />
+  <link rel="stylesheet" href="style.css?v=20260827-secure" />
 </head>
 <body>
-  <div class="app" id="app">
+  <section class="auth-gate" id="authGate" aria-labelledby="authTitle">
+    <div class="auth-card">
+      <div class="auth-school-mark">22</div>
+      <p class="auth-kicker">Защищённая админ-панель</p>
+      <h1 id="authTitle">Классный рост</h1>
+      <p class="auth-description">Введите школьный пароль. Публичный рейтинг продолжает работать без входа.</p>
+      <form id="loginForm" autocomplete="on">
+        <label for="adminPasswordInput">Пароль
+          <div class="password-field">
+            <input id="adminPasswordInput" type="password" autocomplete="current-password" maxlength="256" required />
+            <button type="button" id="togglePasswordBtn" aria-label="Показать пароль" aria-pressed="false">👁</button>
+          </div>
+        </label>
+        <p class="auth-error hidden" id="loginError" role="alert"></p>
+        <button class="primary full auth-submit" id="loginBtn" type="submit">Войти в админку</button>
+      </form>
+      <p class="auth-note">После 5 неверных попыток вход временно блокируется.</p>
+    </div>
+  </section>
+
+  <div class="app app-locked" id="app" aria-hidden="true">
     <header class="top">
       <div>
         <p>Админ-панель</p>
         <h1>Школа №22</h1>
       </div>
       <div class="top-actions">
+        <button class="logout-button" id="logoutBtn" aria-label="Выйти из админки">⇥</button>
         <button class="fullscreen-button" id="fullscreenBtn" aria-label="Открыть админку на весь экран" aria-pressed="false">⛶</button>
         <button id="refreshBtn" aria-label="Обновить данные">↻</button>
       </div>
@@ -300,6 +321,6 @@
     <div class="toast" id="toast"></div>
   </div>
 
-  <script src="script.js?v=20260809-3"></script>
+  <script src="script.js?v=20260827-secure"></script>
 </body>
 </html>
