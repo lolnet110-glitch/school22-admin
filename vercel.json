@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://school22-rating-api.onrender.com/api/:path*"
+      "destination": "https://topossrhzffwypzpnsqp.supabase.co/functions/v1/rating-api/api/:path*"
     }
   ],
   "headers": [
